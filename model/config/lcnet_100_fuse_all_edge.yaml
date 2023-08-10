@@ -1,0 +1,98 @@
+common:
+  batch_size: 64
+  image_size: [256, 256]
+  is_restore: False
+  restore_ind: ""
+  restore_ckpt: ""
+  preview_batch: 500
+
+trainer:
+  max_epochs: 500
+  precision: 32
+  val_check_interval: 0.5
+  gradient_clip_val: 5
+  accumulate_grad_batches: 1
+  accelerator: mps
+  devices: 1
+
+model:
+  name: DocAlignedModel
+  backbone:
+    name: lcnet_100
+    pretrained: True
+    features_only: True
+  neck:
+    name: bifpns
+    out_channels: 64
+    n_bifpn: 3
+  head:
+    name: DocAlignedHead
+    options:
+      in_channels: 64
+      out_channels: 1
+      num_points: 8
+
+
+dataset:
+  train_options:
+    name: DocAlignedDataset
+    options:
+      root: /Users/shayne/Docsaid/dataset
+      image_size: [256, 256]
+      aug_ratio: 1
+      length_of_dataset: 100000
+  valid_options:
+    name: DocAlignedDataset
+    options:
+      root: /Users/shayne/Docsaid/dataset
+      image_size: [256, 256]
+      aug_ratio: 1
+      length_of_dataset: 1000
+
+dataloader:
+  train_options:
+    num_workers: 4
+    shuffle: True
+    drop_last: False
+  valid_options:
+    num_workers: 4
+    shuffle: False
+    drop_last: False
+
+optimizer:
+  name: "AdamW"
+  options:
+    lr: 1.0e-2
+    betas: [0.9, 0.999]
+    weight_decay: 1.0e-3
+    amsgrad: False
+
+lr_scheduler:
+  name: "MultiStepLRWarmUp"
+  options:
+    warmup_milestone: 1000
+    milestones: [50000, 100000]
+    gamma: 0.316227766
+  pl_options:
+    monitor: "loss"
+    interval: "step"
+
+callbacks:
+  - name: "ModelCheckpoint"
+    options:
+      monitor: "val_loss"
+      mode: "min"
+      verbose: True
+      save_last: True
+      save_top_k: 5
+  - name: "LearningRateMonitor"
+    options:
+      logging_interval: "step"
+  - name: "RichModelSummary"
+    options:
+      max_depth: 10
+
+logger:
+  name: "TensorBoardLogger"
+  options:
+    save_dir: "logger"

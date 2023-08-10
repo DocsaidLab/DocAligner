@@ -59,9 +59,9 @@ class BaseDataset:
         img = dsk.imresize(img, self.image_size, self.interpolation)
         nh, nw = img.shape[:2]
         poly = dsk.Polygon(poly) \
-                .normalize(w=w, h=h) \
-                .denormalize(w=nw, h=nh) \
-                .numpy()
+            .normalize(w=w, h=h) \
+            .denormalize(w=nw, h=nh) \
+            .numpy()
         return img, poly
 
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
@@ -133,8 +133,8 @@ class SyncDataset(BaseDataset):
 
     def _paste_doc_image(self, img, poly, doc_img):
         poly = dsk.Polygon(poly, normalized=True) \
-                .denormalize(w=img.shape[1], h=img.shape[0]) \
-                .numpy()
+            .denormalize(w=img.shape[1], h=img.shape[0]) \
+            .numpy()
 
         poly_doc = np.array([
             [0, 0],
@@ -153,6 +153,8 @@ class SyncDataset(BaseDataset):
         idx = np.random.randint(len(self))
         img_path, _ = self.dataset[idx]
         img = dsk.imread(img_path)
+        if img is None:
+            return self.__getitem__(idx)
         poly = self._generate_random_quadrant_points()
         doc_img = self._random_get_doc_image()
         sync_img, poly = self._paste_doc_image(img, poly, doc_img)
@@ -179,30 +181,40 @@ class DocAlignedDataset:
         edge_width: int = 3,
         output_tensor: bool = True,
     ) -> None:
+        self.fuse_ratio = fuse_ratio
+        self.edge_width = edge_width
+        self.output_tensor = output_tensor
+        self.length_of_dataset = length_of_dataset
+        ds_settings = {
+            'root': root,
+            'image_size': image_size,
+            'interpolation': interpolation,
+            'aug_func': aug_func,
+            'aug_ratio': aug_ratio,
+        }
+
         dataset = []
         for d in fuse_dataset:
             if d not in ['midv', 'cord', 'sync']:
                 raise ValueError(f'Unknown dataset: {d}')
             if d == 'midv':
-                dataset.append(MIDVDataset(root, image_size, interpolation, aug_func, aug_ratio))
+                dataset.append(MIDVDataset(**ds_settings))
             if d == 'cord':
-                dataset.append(CordDataset(root, image_size, interpolation, aug_func, aug_ratio))
+                dataset.append(CordDataset(**ds_settings))
             if d == 'sync':
-                dataset.append(SyncDataset(root, image_size, interpolation, aug_func, aug_ratio))
+                dataset.append(SyncDataset(**ds_settings))
         self.dataset = dataset
-        self.length_of_dataset = length_of_dataset
-        self.fuse_ratio = fuse_ratio
-        self.edge_width = edge_width
-        self.output_tensor = output_tensor
+
 
     def __len__(self) -> int:
         return self.length_of_dataset
 
-    def to_tensor(self, img, poly, edge):
+    def to_tensor(self, img, poly, edge, edge_mask):
         poly = dsk.Polygon(poly).normalize(w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
         img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
         edge = edge.astype('float32') / 255.0
-        return img, poly, edge
+        edge_mask = edge_mask.astype('float32')
+        return img, poly, edge, edge_mask
 
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
         idx = idx % len(self)
@@ -211,6 +223,7 @@ class DocAlignedDataset:
         img, poly = self.dataset[d_idx][f_idx]
         edge = cv2.fillPoly(np.zeros_like(img), [poly.astype('int32')], color=(255, 255, 255))
         edge = dsk.imgrandient(dsk.imbinarize(edge), ksize=self.edge_width)
+        edge_mask = dsk.imdilate(edge, ksize=self.edge_width) > 0
         if self.output_tensor:
-            img, poly, edge = self.to_tensor(img, poly, edge)
-        return img, poly, edge
+            img, poly, edge, edge_mask = self.to_tensor(img, poly, edge, edge_mask)
+        return img, poly, edge, edge_mask
