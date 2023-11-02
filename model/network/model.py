@@ -1,41 +1,17 @@
 from pathlib import Path
 from typing import Any, Dict, List
 
-import docsaidkit as dsk
-import docsaidkit.torch as D
+import docsaidkit as D
+import docsaidkit.torch as DT
 import lightning as L
 import numpy as np
 import torch
 import torch.nn as nn
 
-from .backbone import Backbone
-from .base import BaseMixin
+from .component import Backbone, DocAlignedHead
 
 
-class DocAlignedHead(nn.Module):
-
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        num_points: int = 8,
-    ) -> None:
-        super().__init__()
-        self.point_regression = nn.Sequential(
-            D.GAP(),
-            nn.Linear(in_channels, num_points)
-        )
-        self.edge_regression = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-            nn.Conv2d(in_channels, out_channels, 3, padding=1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
-        return self.point_regression(x[-1]), self.edge_regression(x[0])
-
-
-class DocAlignedModel(BaseMixin, L.LightningModule):
+class DocAlignedModel(DT.BaseMixin, L.LightningModule):
 
     def __init__(self, cfg: Dict[str, Any]):
         super().__init__()
@@ -50,11 +26,12 @@ class DocAlignedModel(BaseMixin, L.LightningModule):
             dummy = torch.rand(1, 3, 128, 128)
             channels = [i.size(1) for i in self.backbone(dummy)]
         cfg_model['neck'].update({'in_channels_list': channels})
-        self.neck = D.build_neck(**cfg_model['neck'])
-        self.head = globals()[cfg_model['head']['name']](**cfg_model['head']['options'])
+        self.neck = DT.build_neck(**cfg_model['neck'])
+        self.head = globals()[cfg_model['head']['name']](
+            **cfg_model['head']['options'])
 
         # Setup loss function
-        self.loss_fn_edge = D.WeightedAWingLoss()
+        self.loss_fn_edge = DT.WeightedAWingLoss()
         self.loss_fn_point = nn.SmoothL1Loss(beta=0.1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -66,8 +43,10 @@ class DocAlignedModel(BaseMixin, L.LightningModule):
     def training_step(self, batch, batch_idx):
         imgs, polys, edges, edge_masks = batch
         pred_polys, pred_edges = self.forward(imgs)
-        loss_points = self.loss_fn_point(pred_polys.reshape(-1), polys.reshape(-1))
-        loss_edges = self.loss_fn_edge(pred_edges.squeeze(1), edges, edge_masks)
+        loss_points = self.loss_fn_point(
+            pred_polys.reshape(-1), polys.reshape(-1))
+        loss_edges = self.loss_fn_edge(
+            pred_edges.squeeze(1), edges, edge_masks)
         loss = loss_points + loss_edges
 
         if batch_idx % self.preview_batch == 0:
@@ -92,8 +71,8 @@ class DocAlignedModel(BaseMixin, L.LightningModule):
 
     @ property
     def preview_dir(self):
-        dir_path = Path().joinpath(self.cfg.name, self.cfg.name_ind)
-        img_path = Path(dir_path) / "preview" / f'epoch_{self.current_epoch}'
+        img_path = Path(self.cfg.root_dir) / "preview" / \
+            f'epoch_{self.current_epoch}'
         if not img_path.exists():
             img_path.mkdir(parents=True)
         return img_path
@@ -113,13 +92,17 @@ class DocAlignedModel(BaseMixin, L.LightningModule):
             img = np.uint8(np.transpose(img, (1, 2, 0)) * 255)
             edge = np.stack([np.uint8(edge * 255)] * 3, axis=-1)
             pred_edge = np.stack([np.uint8(pred_edge * 255)] * 3, axis=-1)
-            poly = dsk.Polygon(poly, normalized=True).denormalize(*img.shape[:2][::-1])
-            pred_poly = dsk.Polygon(pred_poly, normalized=True).denormalize(*img.shape[:2][::-1])
+            poly = D.Polygon(poly, normalized=True).denormalize(
+                *img.shape[:2][::-1])
+            pred_poly = D.Polygon(pred_poly, normalized=True).denormalize(
+                *img.shape[:2][::-1])
 
-            img1 = dsk.draw_polygon(img.copy(), poly, color=(0, 255, 0), thickness=2)
-            img2 = dsk.draw_polygon(img.copy(), pred_poly, color=(0, 0, 255), thickness=2)
+            img1 = D.draw_polygon(
+                img.copy(), poly, color=(0, 255, 0), thickness=2)
+            img2 = D.draw_polygon(
+                img.copy(), pred_poly, color=(0, 0, 255), thickness=2)
             img_poly = np.concatenate([img1, img2], axis=1)
             img_edge = np.concatenate([edge, pred_edge], axis=1)
             img_output = np.concatenate([img_poly, img_edge], axis=0)
             img_output_name = str(preview_dir / f'{idx}.jpg')
-            dsk.imwrite(img_output, img_output_name)
+            D.imwrite(img_output, img_output_name)

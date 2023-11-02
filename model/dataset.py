@@ -13,7 +13,8 @@ DIR = dsk.get_curdir(__file__)
 class DefaultImageAug:
 
     def __init__(self, p=0.5):
-        self.coarse_drop_aug = A.CoarseDropout(max_holes=1, max_height=64, max_width=64, p=p)
+        self.coarse_drop_aug = A.CoarseDropout(
+            max_holes=1, max_height=64, max_width=64, p=p)
         self.aug = A.Compose([
             A.ShiftScaleRotate(border_mode=cv2.BORDER_CONSTANT),
             A.MotionBlur(),
@@ -46,7 +47,8 @@ class BaseDataset:
         self.image_size = image_size
         self.interpolation = interpolation
         self.aug_ratio = aug_ratio
-        self.root = DIR.parent.parent / 'dataset' if root is None else Path(root)
+        self.root = DIR.parent.parent / \
+            'dataset' if root is None else Path(root)
         self.dataset = self._build()
         self.aug_func = aug_func(p=aug_ratio) if aug_func is not None \
             else DefaultImageAug(p=aug_ratio)
@@ -109,8 +111,9 @@ class SyncDataset(BaseDataset):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.midv = MIDVDataset(aug_ratio=0)
-        self.cord = CordDataset(aug_ratio=0)
+        kwargs.update({'aug_ratio': 0.0})
+        self.midv = MIDVDataset(**kwargs)
+        self.cord = CordDataset(**kwargs)
 
     def _build(self):
         ds = dsk.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
@@ -144,7 +147,8 @@ class SyncDataset(BaseDataset):
         ]).astype('float32')
 
         matrix = cv2.getPerspectiveTransform(poly_doc, poly)
-        src_warp = cv2.warpPerspective(doc_img, matrix, (img.shape[1], img.shape[0]))
+        src_warp = cv2.warpPerspective(
+            doc_img, matrix, (img.shape[1], img.shape[0]))
         sync_img = np.where(src_warp > 10, src_warp, img.copy())
 
         return sync_img, poly
@@ -205,12 +209,12 @@ class DocAlignedDataset:
                 dataset.append(SyncDataset(**ds_settings))
         self.dataset = dataset
 
-
     def __len__(self) -> int:
         return self.length_of_dataset
 
     def to_tensor(self, img, poly, edge, edge_mask):
-        poly = dsk.Polygon(poly).normalize(w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
+        poly = dsk.Polygon(poly).normalize(
+            w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
         img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
         edge = edge.astype('float32') / 255.0
         edge_mask = edge_mask.astype('float32')
@@ -221,9 +225,11 @@ class DocAlignedDataset:
         d_idx = np.random.choice(len(self.dataset), p=self.fuse_ratio)
         f_idx = np.random.randint(len(self.dataset[d_idx]))
         img, poly = self.dataset[d_idx][f_idx]
-        edge = cv2.fillPoly(np.zeros_like(img), [poly.astype('int32')], color=(255, 255, 255))
+        edge = cv2.fillPoly(np.zeros_like(
+            img), [poly.astype('int32')], color=(255, 255, 255))
         edge = dsk.imgrandient(dsk.imbinarize(edge), ksize=self.edge_width)
         edge_mask = dsk.imdilate(edge, ksize=self.edge_width) > 0
         if self.output_tensor:
-            img, poly, edge, edge_mask = self.to_tensor(img, poly, edge, edge_mask)
+            img, poly, edge, edge_mask = self.to_tensor(
+                img, poly, edge, edge_mask)
         return img, poly, edge, edge_mask

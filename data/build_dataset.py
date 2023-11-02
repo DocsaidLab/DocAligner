@@ -9,7 +9,7 @@ ROOT = Path('/data/Dataset')
 
 MIDV_ROOT = str(ROOT / 'midv_dataset')
 
-INDOOR_ROOT = str(ROOT / 'indoor_dataset')
+INDOOR_ROOT = str(ROOT / 'indoor_scene_recognition')
 
 CORD_ROOT = str(ROOT / 'cord_v0')
 

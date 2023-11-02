@@ -9,11 +9,11 @@ common:
 trainer:
   max_epochs: 500
   precision: 32
-  val_check_interval: 0.5
+  val_check_interval: 1.0
   gradient_clip_val: 5
   accumulate_grad_batches: 1
-  accelerator: mps
-  devices: 1
+  accelerator: gpu
+  devices: [0]
 
 model:
   name: DocAlignedModel
@@ -37,34 +37,38 @@ dataset:
   train_options:
     name: DocAlignedDataset
     options:
-      root: /Users/shayne/Docsaid/dataset
+      root: /data/Dataset
       image_size: [256, 256]
       aug_ratio: 1
       length_of_dataset: 100000
   valid_options:
     name: DocAlignedDataset
     options:
-      root: /Users/shayne/Docsaid/dataset
+      root: /data/Dataset
       image_size: [256, 256]
       aug_ratio: 1
       length_of_dataset: 1000
 
 dataloader:
   train_options:
-    num_workers: 4
-    shuffle: True
+    batch_size: -1
+    num_workers: 32
+    shuffle: False
     drop_last: False
+    pin_memory: True
   valid_options:
-    num_workers: 4
+    batch_size: -1
+    num_workers: 32
     shuffle: False
     drop_last: False
 
+
 optimizer:
-  name: "AdamW"
+  name: AdamW
   options:
-    lr: 1.0e-2
+    lr: 1.0e-4
     betas: [0.9, 0.999]
-    weight_decay: 1.0e-3
+    weight_decay: 0.1
     amsgrad: False
 
 lr_scheduler:
@@ -74,25 +78,28 @@ lr_scheduler:
     milestones: [50000, 100000]
     gamma: 0.316227766
   pl_options:
-    monitor: "loss"
-    interval: "step"
+    monitor: loss
+    interval: step
 
 callbacks:
-  - name: "ModelCheckpoint"
+  - name: ModelCheckpoint
     options:
-      monitor: "val_loss"
-      mode: "min"
+      monitor: val_nls_scores
+      mode: max
       verbose: True
       save_last: True
       save_top_k: 5
-  - name: "LearningRateMonitor"
+  - name: LearningRateMonitor
     options:
-      logging_interval: "step"
-  - name: "RichModelSummary"
+      logging_interval: step
+  - name: RichModelSummary
     options:
-      max_depth: 10
+      max_depth: 3
+  - name: CustomTQDMProgressBar
+    options:
+      unit_scale: -1
 
 logger:
-  name: "TensorBoardLogger"
+  name: TensorBoardLogger
   options:
-    save_dir: "logger"
+    save_dir: logger

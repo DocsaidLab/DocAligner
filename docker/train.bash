@@ -7,4 +7,5 @@ docker run \
     --ipc=host --net=host \
     --cpuset-cpus="0-31" \
     -v $PWD/DocAligned:/code/DocAligned \
-    -it --rm doc_align_train python -c "from DocAligned.model.trainer import main; main('$1')"
+    -v /data/Dataset:/data/Dataset \
+    -it --rm doc_align_train python -c "from DocAligned.model import main_docalign_train; main_docalign_train('$1')"

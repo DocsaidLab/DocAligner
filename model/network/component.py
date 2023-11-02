@@ -1,5 +1,6 @@
 from typing import List
 
+import docsaidkit.torch as DT
 import torch
 import torch.nn as nn
 from docsaidkit.torch import (Hsigmoid, build_backbone, build_transformer,
@@ -24,3 +25,26 @@ class Backbone(nn.Module):
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         return self.backbone(x)
+
+
+class DocAlignedHead(nn.Module):
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        num_points: int = 8,
+    ) -> None:
+        super().__init__()
+        self.point_regression = nn.Sequential(
+            DT.GAP(),
+            nn.Linear(in_channels, num_points)
+        )
+        self.edge_regression = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
+            nn.Conv2d(in_channels, out_channels, 3, padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
+        return self.point_regression(x[-1]), self.edge_regression(x[0])
