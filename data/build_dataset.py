@@ -1,16 +1,17 @@
-import json
 import re
 from pathlib import Path
 
-import docsaidkit as dsk
+import docsaidkit as D
 
-DIR = dsk.get_curdir(__file__)
+DIR = D.get_curdir(__file__)
 
-MIDV_ROOT = str(DIR.parent.parent / 'dataset/midv_dataset')
+ROOT = Path('/data/Dataset')
 
-INDOOR_ROOT = str(DIR.parent.parent / 'dataset/indoor_scene_recognition')
+MIDV_ROOT = str(ROOT / 'midv_dataset')
 
-CORD_ROOT = str(DIR.parent.parent / 'dataset/cord_v0')
+INDOOR_ROOT = str(ROOT / 'indoor_dataset')
+
+CORD_ROOT = str(ROOT / 'cord_v0')
 
 
 def build_midv_dataset():
@@ -37,8 +38,8 @@ def build_midv_dataset():
     """
     dataset = {}
     imaging_type_pattern = re.compile(r'^[A-Z]{2}\d{2}_\d{2}$')
-    midv_fs = dsk.get_files(MIDV_ROOT, suffix=['.tif'])
-    for f in dsk.Tqdm(midv_fs):
+    midv_fs = D.get_files(MIDV_ROOT, suffix=['.tif'])
+    for f in D.Tqdm(midv_fs):
 
         if imaging_type_pattern.match(f.stem) is None:
             print(f'A demo file: {str(f.name)}, skip.')
@@ -47,7 +48,8 @@ def build_midv_dataset():
         name_info = f.stem.split('_')[0]
         imaging_type = name_info[0:2]
         person_id = int(name_info[2:])
-        gt_path = str(f).replace('images', 'ground_truth').replace('.tif', '.json')
+        gt_path = str(f).replace(
+            'images', 'ground_truth').replace('.tif', '.json')
 
         if person_id not in dataset:
             dataset[person_id] = []
@@ -57,7 +59,7 @@ def build_midv_dataset():
             'gt_path': gt_path.replace(MIDV_ROOT, 'midv_dataset'),
             'imaging_type': imaging_type,
         })
-    dsk.dump_json(dataset, 'midv_dataset.json')
+    D.dump_json(dataset, DIR / 'midv_dataset.json')
 
 
 def build_indoor_dataset():
@@ -87,21 +89,21 @@ def build_indoor_dataset():
         }
     """
     dataset = []
-    indoor_fs = dsk.get_files(Path(INDOOR_ROOT) / 'Images', suffix=['.jpg'])
-    for f in dsk.Tqdm(indoor_fs):
+    indoor_fs = D.get_files(Path(INDOOR_ROOT) / 'Images', suffix=['.jpg'])
+    for f in D.Tqdm(indoor_fs):
         dataset.append({
             'scene': f.parent.name,
             'img_path': str(f).replace(INDOOR_ROOT, 'indoor_scene_recognition'),
         })
-    dsk.dump_json(dataset, 'indoor_dataset.json')
+    D.dump_json(dataset, DIR / 'indoor_dataset.json')
 
 
 def build_cord_v0_dataset():
     for mode in ['train', 'test', 'dev']:
         dataset = []
-        cord_fs = dsk.get_files(Path(CORD_ROOT) / mode, suffix=['.json'])
+        cord_fs = D.get_files(Path(CORD_ROOT) / mode, suffix=['.json'])
         for f in cord_fs:
-            gt = dsk.load_json(f)
+            gt = D.load_json(f)
 
             if not gt['roi'] or len(gt['roi']) != 8:
                 continue
@@ -122,7 +124,7 @@ def build_cord_v0_dataset():
                 'quad': quad,
             })
 
-        dsk.dump_json(dataset, f'cord_v0_{mode}_dataset.json')
+        D.dump_json(dataset, DIR / f'cord_v0_{mode}_dataset.json')
 
 
 if __name__ == '__main__':
