@@ -3,11 +3,11 @@ from typing import Any, Callable, List, Tuple, Union
 
 import albumentations as A
 import cv2
-import docsaidkit as dsk
+import docsaidkit as D
 import numpy as np
 from docsaidkit import INTER
 
-DIR = dsk.get_curdir(__file__)
+DIR = D.get_curdir(__file__)
 
 
 class DefaultImageAug:
@@ -16,7 +16,10 @@ class DefaultImageAug:
         self.coarse_drop_aug = A.CoarseDropout(
             max_holes=1, max_height=64, max_width=64, p=p)
         self.aug = A.Compose([
-            A.ShiftScaleRotate(border_mode=cv2.BORDER_CONSTANT),
+            A.ShiftScaleRotate(
+                shift_limit=0.2,
+                scale_limit=[-0.4, 0.2],
+                border_mode=cv2.BORDER_CONSTANT),
             A.MotionBlur(),
             A.GaussNoise(),
             A.ColorJitter(),
@@ -24,13 +27,14 @@ class DefaultImageAug:
             A.HorizontalFlip(),
             A.VerticalFlip(),
             A.RandomRotate90(),
-            A.Perspective()
+            A.Perspective(),
+            A.GaussianBlur(p=1, blur_limit=(7, 11)),
         ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
         img = self.coarse_drop_aug(image=image)['image']
         img, kps = self.aug(image=img, keypoints=keypoints).values()
-        kps = dsk.order_points_clockwise(np.array(kps))
+        kps = D.order_points_clockwise(np.array(kps))
         return img, kps
 
 
@@ -58,9 +62,9 @@ class BaseDataset:
 
     def _resize_poly(self, img: np.ndarray, poly: np.ndarray):
         h, w = img.shape[:2]
-        img = dsk.imresize(img, self.image_size, self.interpolation)
+        img = D.imresize(img, self.image_size, self.interpolation)
         nh, nw = img.shape[:2]
-        poly = dsk.Polygon(poly) \
+        poly = D.Polygon(poly) \
             .normalize(w=w, h=h) \
             .denormalize(w=nw, h=nh) \
             .numpy()
@@ -69,7 +73,7 @@ class BaseDataset:
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
         idx = idx % len(self.dataset)
         img_path, poly = self.dataset[idx]
-        img = dsk.imread(img_path)
+        img = D.imread(img_path)
         poly = np.array(poly)
 
         if self.image_size is not None:
@@ -85,12 +89,12 @@ class BaseDataset:
 class MIDVDataset(BaseDataset):
 
     def _build(self):
-        ds = dsk.load_json(DIR.parent / 'data' / 'midv_dataset.json')
+        ds = D.load_json(DIR.parent / 'data' / 'midv_dataset.json')
         dataset = []
-        for data in dsk.Tqdm(ds.values()):
+        for data in D.Tqdm(ds.values()):
             for d in data:
                 img_path = self.root / d['img_path']
-                gt = dsk.load_json(self.root / d['gt_path'])['quad']
+                gt = D.load_json(self.root / d['gt_path'])['quad']
                 dataset.append((img_path, gt))
         return dataset
 
@@ -98,9 +102,9 @@ class MIDVDataset(BaseDataset):
 class CordDataset(BaseDataset):
 
     def _build(self):
-        ds = dsk.load_json(DIR.parent / 'data' / 'cord_v0_train_dataset.json')
+        ds = D.load_json(DIR.parent / 'data' / 'cord_v0_train_dataset.json')
         dataset = []
-        for data in dsk.Tqdm(ds):
+        for data in D.Tqdm(ds):
             img_path = self.root / data['img_path']
             gt = data['quad']
             dataset.append((img_path, gt))
@@ -114,18 +118,26 @@ class SyncDataset(BaseDataset):
         kwargs.update({'aug_ratio': 0.0})
         self.midv = MIDVDataset(**kwargs)
         self.cord = CordDataset(**kwargs)
+        self.pool = D.get_files(
+            DIR.parent / 'data' / 'docpool',
+            suffix=['.jpg', '.jpeg', '.png']
+        )
 
     def _build(self):
-        ds = dsk.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
+        ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
         dataset = []
-        for data in dsk.Tqdm(ds):
+        for data in D.Tqdm(ds):
             img_path = self.root / data['img_path']
             dataset.append((img_path, None))
         return dataset
 
     def _random_get_doc_image(self):
-        ds = self.midv if np.random.rand() < 0.9 else self.cord
-        return dsk.imwarp_quadrangle(*ds[np.random.randint(len(ds))])
+        if np.random.rand() < 0.5:
+            ds = np.random.choice([self.midv, self.cord], p=[0.9, 0.1])
+            return D.imwarp_quadrangle(*ds[np.random.randint(len(ds))])
+        else:
+            img = self.pool[np.random.randint(len(self.pool))]
+            return D.imread(img)
 
     def _generate_random_quadrant_points(self):
         q1_point = np.random.uniform(low=[0.1, 0.1], high=[0.4, 0.4])
@@ -135,7 +147,7 @@ class SyncDataset(BaseDataset):
         return np.array([q1_point, q2_point, q3_point, q4_point]).astype('float32')
 
     def _paste_doc_image(self, img, poly, doc_img):
-        poly = dsk.Polygon(poly, normalized=True) \
+        poly = D.Polygon(poly, normalized=True) \
             .denormalize(w=img.shape[1], h=img.shape[0]) \
             .numpy()
 
@@ -156,7 +168,7 @@ class SyncDataset(BaseDataset):
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
         idx = np.random.randint(len(self))
         img_path, _ = self.dataset[idx]
-        img = dsk.imread(img_path)
+        img = D.imread(img_path)
         if img is None:
             return self.__getitem__(idx)
         poly = self._generate_random_quadrant_points()
@@ -213,7 +225,7 @@ class DocAlignedDataset:
         return self.length_of_dataset
 
     def to_tensor(self, img, poly, edge, edge_mask):
-        poly = dsk.Polygon(poly).normalize(
+        poly = D.Polygon(poly).normalize(
             w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
         img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
         edge = edge.astype('float32') / 255.0
@@ -227,8 +239,8 @@ class DocAlignedDataset:
         img, poly = self.dataset[d_idx][f_idx]
         edge = cv2.fillPoly(np.zeros_like(
             img), [poly.astype('int32')], color=(255, 255, 255))
-        edge = dsk.imgrandient(dsk.imbinarize(edge), ksize=self.edge_width)
-        edge_mask = dsk.imdilate(edge, ksize=self.edge_width) > 0
+        edge = D.imgrandient(D.imbinarize(edge), ksize=self.edge_width)
+        edge_mask = D.imdilate(edge, ksize=self.edge_width) > 0
         if self.output_tensor:
             img, poly, edge, edge_mask = self.to_tensor(
                 img, poly, edge, edge_mask)
