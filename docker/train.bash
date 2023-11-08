@@ -18,6 +18,6 @@ docker run \
     -v $PWD/DocAligned:/code/DocAligned \
     -v $PWD/trainer.py:/code/trainer.py \
     -v /data/Dataset:/data/Dataset \
-    -it --rm kie_train python trainer.py --cfg_name $1
+    -it --rm doc_align_train python trainer.py --cfg_name $1
 
 # 說明：`/data/Dataset` 是放外部資料的地方，請自行修改成自己的路徑。
