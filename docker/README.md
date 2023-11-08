@@ -1,6 +1,6 @@
 # 使用説明
 
-## Dockerfile 的構建
+## 構建訓練環境
 
 首先，請您確保已經從 `DocsaidKit` 內建置了基礎映像 `docsaid_training_base_image`。如果您還沒有這樣做，請先參考 `DocsaidKit` 的說明文件。接著，請使用以下指令來建置 DocAligned 工作的 Docker 映像：
 
@@ -43,7 +43,7 @@ bash docker/build.bash
     - `ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]` 和 `CMD ["bash"]`
     - 這些命令指定了容器啟動時執行的預設命令。 當容器啟動時，它將執行 `/entrypoint.sh` 腳本。
 
-## Docker image 執行
+## 執行訓練
 
 這部分的說明如何利用您已經構建的 Docker 映像來執行文檔對齊訓練。
 
