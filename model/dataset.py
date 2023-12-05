@@ -164,6 +164,38 @@ class CordDataset(BaseDataset):
         return dataset
 
 
+class SmartDocDataset(BaseDataset):
+
+    def _build(self):
+        ds = D.load_json(DIR.parent / 'data' / 'smartdoc2015_dataset.json')
+        dataset = []
+        for key, data in D.Tqdm(ds.items()):
+            for d in data:
+                img_path = d['img_path']
+                gt = D.load_json(d['gt_path'])
+                dataset.append((img_path, gt, key))
+        return dataset
+
+    def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
+        # For Validation, SmartDocDataset has a special return value.
+        # -> (img, poly, key)
+
+        idx = idx % len(self.dataset)
+        img_path, poly, key = self.dataset[idx]
+        img = D.imread(img_path)
+
+        if img is None:
+            raise ValueError(f'Image is None: {img_path}')
+
+        poly = np.array(poly)
+
+        if self.image_size is not None:
+            img, poly = self._resize_poly(img, poly)
+
+        img, poly = self.aug_func(image=img, keypoints=poly)
+        return img, poly, key
+
+
 class SyncDataset(BaseDataset):
 
     def __init__(
