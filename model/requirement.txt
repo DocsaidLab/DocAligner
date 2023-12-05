@@ -1,5 +1,0 @@
-fire
-ipython
-tensorboard
-albumentations
-docsaidkit==0.1.0

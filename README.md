@@ -18,16 +18,21 @@ This project is a visual system focused on the localization of documents in the 
 - [Dataset](#dataset)
 - [Dataset Preprocessing](#dataset-preprocessing)
 - [Dataset Implementation](#dataset-implementation)
-    - [1. MIDV-500 Dataset](#1-midv-500-dataset)
-    - [2. MIDV-2019 Dataset](#2-midv-2019-dataset)
-    - [3. MIDV-2020 Dataset](#3-midv-2020-dataset)
-    - [4. CORD v0 Dataset](#4-cord-v0-dataset)
-    - [5. Synthetic Dataset](#5-synthetic-dataset)
-    - [6. Image Augmentation](#6-image-augmentation)
+    - [1. SmartDoc 2015 Dataset](#1-smartdoc-2015-dataset)
+    - [2. MIDV-500 Dataset](#2-midv-500-dataset)
+    - [3. MIDV-2019 Dataset](#3-midv-2019-dataset)
+    - [4. MIDV-2020 Dataset](#4-midv-2020-dataset)
+    - [5. CORD v0 Dataset](#5-cord-v0-dataset)
+    - [6. Synthetic Dataset](#6-synthetic-dataset)
+    - [7. Image Augmentation](#7-image-augmentation)
 - [Building the Training Environment](#building-the-training-environment)
 - [Running Training (Based on Docker)](#running-training-based-on-docker)
 
 ## Dataset
+
+- **SmartDoc 2015**
+    - [**SmartDoc 2015**](https://github.com/jchazalon/smartdoc15-ch1-dataset)
+    - The Smartdoc 2015 - Challenge 1 dataset was originally created for the Smartdoc 2015 competition focusing on the evaluation of document image acquisition method using smartphones. The challenge 1, in particular, consisted in detecting and segmenting document regions in video frames extracted from the preview stream of a smartphone.
 
 - **MIDV-500/MIDV-2019**
    - [**MIDV**](https://github.com/fcakyon/midv500)
@@ -71,6 +76,9 @@ This project is a visual system focused on the localization of documents in the 
     - **MIDV-2020:**
       Visit their respective links and follow the download instructions.
 
+    - **SmartDoc 2015:**
+      Visit their respective links and follow the download instructions.
+
     - **Indoor Scenes & CORD v0:**
       Visit their respective links and follow the download instructions.
 
@@ -90,7 +98,28 @@ We have implemented datasets corresponding to the several mentioned datasets for
 
 Below, we demonstrate how to load these datasets:
 
-### 1. MIDV-500 Dataset
+### 1. SmartDoc 2015 Dataset
+
+```python
+import docsaidkit as D
+from model.dataset import SmartDocDataset
+
+ds = SmartDocDataset(
+    root="/data/Dataset" # Replace with your dataset directory
+)
+
+# Only SmartDocDataset has the third return value,
+# it's for validation and benchmarking.
+img, poly, _ = ds[0]
+
+D.imwrite(D.draw_polygon(img, poly, thickness=5), 'smartdoc_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./docs/smartdoc_test_img.jpg" width="300">
+</div>
+
+### 2. MIDV-500 Dataset
 
 ```python
 import docsaidkit as D
@@ -108,7 +137,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv500_test_img.jpg')
     <img src="./docs/midv500_test_img.jpg" width="300">
 </div>
 
-### 2. MIDV-2019 Dataset
+### 3. MIDV-2019 Dataset
 
 ```python
 import docsaidkit as D
@@ -126,7 +155,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv2019_test_img.jpg')
     <img src="./docs/midv2019_test_img.jpg" width="300">
 </div>
 
-### 3. MIDV-2020 Dataset
+### 4. MIDV-2020 Dataset
 
 ```python
 import docsaidkit as D
@@ -144,7 +173,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=3), 'midv2020_test_img.jpg')
     <img src="./docs/midv2020_test_img.jpg" width="300">
 </div>
 
-### 4. CORD v0 Dataset
+### 5. CORD v0 Dataset
 
 ```python
 import docsaidkit as D
@@ -162,7 +191,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'cordv0_test_img.jpg')
     <img src="./docs/cordv0_test_img.jpg" width="300">
 </div>
 
-### 5. Synthetic Dataset
+### 6. Synthetic Dataset
 
 Considering the limitations of the datasets, we use dynamic image synthesis technology.
 
@@ -188,7 +217,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=2), 'sync_test_img.jpg')
     <img src="./docs/sync_test_img.jpg" width="300">
 </div>
 
-### 6. Image Augmentation
+### 7. Image Augmentation
 
 Despite having collected some data, the diversity of these datasets is still insufficient. To increase the diversity, we use image augmentation techniques, which can simulate various conditions during image capture, such as occlusion, motion, rotation, blurring, noise, color changes, etc.
 
