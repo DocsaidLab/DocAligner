@@ -133,6 +133,25 @@ class MIDV2019Dataset(BaseDataset):
             return super().__getitem__(idx)
 
 
+class MIDV2020Dataset(BaseDataset):
+
+    def _build(self):
+        ds = D.load_json(DIR.parent / 'data' / 'midv2020_dataset.json')
+        dataset = []
+        for data in D.Tqdm(ds):
+            img_path = self.root / data['img_path']
+            gt = D.load_json(self.root / data['gt_path'])['_via_img_metadata']
+            for k, v in gt.items():
+                if img_path.name in k:
+                    idx = 0 if len(v['regions']) == 1 else 1
+                    quad_x = v['regions'][idx]['shape_attributes']['all_points_x']
+                    quad_y = v['regions'][idx]['shape_attributes']['all_points_y']
+                    quad = np.array([quad_x, quad_y]).T
+                    dataset.append((img_path, quad))
+                    break
+        return dataset
+
+
 class CordDataset(BaseDataset):
 
     def _build(self):
@@ -147,13 +166,35 @@ class CordDataset(BaseDataset):
 
 class SyncDataset(BaseDataset):
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        use_midv500: bool = True,
+        use_midv2019: bool = True,
+        use_midv2020: bool = True,
+        use_cordv0: bool = True,
+        *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         kwargs.update({'aug_ratio': 0.0})
-        self.midv = MIDV500Dataset(**kwargs)
-        self.cord = CordDataset(**kwargs)
+
+        target_dataset = []
+        if use_midv500:
+            self.midv500 = MIDV500Dataset(**kwargs)
+            target_dataset.append('midv500')
+        if use_midv2019:
+            self.midv2019 = MIDV2019Dataset(**kwargs)
+            target_dataset.append('midv2019')
+        if use_midv2020:
+            self.midv2020 = MIDV2020Dataset(**kwargs)
+            target_dataset.append('midv2020')
+        if use_cordv0:
+            self.cord = CordDataset(**kwargs)
+            target_dataset.append('cord')
+
         self.pool = D.get_files(
             DIR.parent / 'data' / 'docpool', suffix=['.jpg'])
+        target_dataset.append('pool')
+        self.target_dataset = target_dataset
 
     def _build(self):
         ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
@@ -164,14 +205,17 @@ class SyncDataset(BaseDataset):
         return dataset
 
     def _random_get_doc_image(self):
-        tgt = np.random.choice(['midv', 'cord', 'pool'], p=[0.1, 0.1, 0.8])
+        tgt = np.random.choice(self.target_dataset)
         if tgt == 'cord':
             return D.imwarp_quadrangle(*self.cord[np.random.randint(len(self.cord))])
-        elif tgt == 'midv':
-            return D.imwarp_quadrangle(*self.midv[np.random.randint(len(self.midv))])
+        elif tgt == 'midv500':
+            return D.imwarp_quadrangle(*self.midv500[np.random.randint(len(self.midv500))])
+        elif tgt == 'midv2019':
+            return D.imwarp_quadrangle(*self.midv2019[np.random.randint(len(self.midv2019))])
+        elif tgt == 'midv2020':
+            return D.imwarp_quadrangle(*self.midv2020[np.random.randint(len(self.midv2020))])
         else:
-            img = self.pool[np.random.randint(len(self.pool))]
-            return D.imread(img)
+            return D.imread(self.pool[np.random.randint(len(self.pool))])
 
     def _generate_random_quadrant_points(self):
         # 0.3 -> Avoid the error order poins of the image.
@@ -203,6 +247,7 @@ class SyncDataset(BaseDataset):
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
 
         if np.random.rand() < 0.5:
+            # Generate doc image on indoor dataset.
             idx = np.random.randint(len(self))
             img_path, _ = self.dataset[idx]
             img = D.imread(img_path)
@@ -210,7 +255,26 @@ class SyncDataset(BaseDataset):
                 return self.__getitem__(idx)
             poly = self._generate_random_quadrant_points()
         else:
-            img, poly = self.midv[np.random.randint(len(self.midv))]
+            # Generate doc image on midv dataset.
+            tgts = []
+            if hasattr(self, 'midv500'):
+                tgts.append('midv500')
+            if hasattr(self, 'midv2019'):
+                tgts.append('midv2019')
+            if hasattr(self, 'midv2020'):
+                tgts.append('midv2020')
+
+            tgt = np.random.choice(tgts)
+            if tgt == 'midv500':
+                img, poly = self.midv500[
+                    np.random.randint(len(self.midv500))]
+            elif tgt == 'midv2019':
+                img, poly = self.midv2019[
+                    np.random.randint(len(self.midv2019))]
+            elif tgt == 'midv2020':
+                img, poly = self.midv2020[
+                    np.random.randint(len(self.midv2020))]
+
             poly = D.Polygon(poly).normalize(
                 img.shape[1], img.shape[0]).numpy()
 
@@ -234,8 +298,9 @@ class DocAlignedDataset:
         aug_func: Callable = None,
         aug_ratio: float = 0.0,
         length_of_dataset: int = 100000,
-        fuse_dataset: List[str] = ['midv500', 'cord', 'sync'],
-        fuse_ratio: List[float] = [0.4, 0.2, 0.4],
+        fuse_dataset: List[str] = [
+            'midv500', 'midv2019', 'midv2020', 'cord', 'sync'],
+        fuse_ratio: List[float] = [0.2, 0.2, 0.2, 0.1, 0.3],
         edge_width: int = 3,
         output_tensor: bool = True,
     ) -> None:
@@ -243,6 +308,8 @@ class DocAlignedDataset:
         self.edge_width = edge_width
         self.output_tensor = output_tensor
         self.length_of_dataset = length_of_dataset
+
+        # Dataset settings
         ds_settings = {
             'root': root,
             'image_size': image_size,
@@ -253,12 +320,14 @@ class DocAlignedDataset:
 
         dataset = []
         for d in fuse_dataset:
-            if d not in ['midv500', 'midv2019', 'cord', 'sync']:
+            if d not in ['midv500', 'midv2019', 'midv2020', 'cord', 'sync']:
                 raise ValueError(f'Unknown dataset: {d}')
             if d == 'midv500':
                 dataset.append(MIDV500Dataset(**ds_settings))
             if d == 'midv2019':
                 dataset.append(MIDV2019Dataset(**ds_settings))
+            if d == 'midv2020':
+                dataset.append(MIDV2020Dataset(**ds_settings))
             if d == 'cord':
                 dataset.append(CordDataset(**ds_settings))
             if d == 'sync':

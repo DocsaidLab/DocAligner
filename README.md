@@ -18,11 +18,12 @@ This project is a visual system focused on the localization of documents in the 
 - [Dataset](#dataset)
 - [Dataset Preprocessing](#dataset-preprocessing)
 - [Dataset Implementation](#dataset-implementation)
-   - [1. MIDV-500 Dataset](#1-midv-500-dataset)
-   - [2. MIDV-2019 Dataset](#2-midv-2019-dataset)
-   - [3. CORD v0 Dataset](#3-cord-v0-dataset)
-   - [4. Synthetic Dataset](#4-synthetic-dataset)
-   - [5. Image Augmentation](#5-image-augmentation)
+    - [1. MIDV-500 Dataset](#1-midv-500-dataset)
+    - [2. MIDV-2019 Dataset](#2-midv-2019-dataset)
+    - [3. MIDV-2020 Dataset](#3-midv-2020-dataset)
+    - [4. CORD v0 Dataset](#4-cord-v0-dataset)
+    - [5. Synthetic Dataset](#5-synthetic-dataset)
+    - [6. Image Augmentation](#6-image-augmentation)
 - [Building the Training Environment](#building-the-training-environment)
 - [Running Training (Based on Docker)](#running-training-based-on-docker)
 
@@ -32,6 +33,10 @@ This project is a visual system focused on the localization of documents in the 
    - [**MIDV**](https://github.com/fcakyon/midv500)
    - MIDV-500 comprises 500 video clips of 50 different identity document types, including 17 ID cards, 14 passports, 13 driver's licenses, and 6 other identity documents from various countries. It is authentic and allows extensive research on various document analysis problems.
    - The MIDV-2019 dataset includes distorted and low-light images.
+
+- **MIDV-2020:**
+   - [**MIDV2020**](http://l3i-share.univ-lr.fr/MIDV2020/midv2020.html)
+   - MIDV-2020 is a dataset of 10 document types, including 1000 annotated video clips, 1000 scanned images, and 1000 unique photos of 1000 simulated identity documents, each with a unique text field value and a unique artificially generated face.
 
 - **Indoor Scenes**
    - [**Indoor**](https://web.mit.edu/torralba/www/indoor.html)
@@ -63,7 +68,10 @@ This project is a visual system focused on the localization of documents in the 
       python download_midv.py
       ```
 
-    - **MIT Indoor Scenes & CORD v0:**
+    - **MIDV-2020:**
+      Visit their respective links and follow the download instructions.
+
+    - **Indoor Scenes & CORD v0:**
       Visit their respective links and follow the download instructions.
 
 3. **Build Dataset:**
@@ -118,7 +126,25 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv2019_test_img.jpg')
     <img src="./docs/midv2019_test_img.jpg" width="300">
 </div>
 
-### 3. CORD v0 Dataset
+### 3. MIDV-2020 Dataset
+
+```python
+import docsaidkit as D
+from model.dataset import MIDV2020Dataset
+
+ds = MIDV2020Dataset(
+    root="/data/Dataset" # Replace with your dataset directory
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=3), 'midv2020_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./docs/midv2020_test_img.jpg" width="300">
+</div>
+
+### 4. CORD v0 Dataset
 
 ```python
 import docsaidkit as D
@@ -136,7 +162,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'cordv0_test_img.jpg')
     <img src="./docs/cordv0_test_img.jpg" width="300">
 </div>
 
-### 4. Synthetic Dataset
+### 5. Synthetic Dataset
 
 Considering the limitations of the datasets, we use dynamic image synthesis technology.
 
@@ -162,8 +188,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=2), 'sync_test_img.jpg')
     <img src="./docs/sync_test_img.jpg" width="300">
 </div>
 
-
-### 5. Image Augmentation
+### 6. Image Augmentation
 
 Despite having collected some data, the diversity of these datasets is still insufficient. To increase the diversity, we use image augmentation techniques, which can simulate various conditions during image capture, such as occlusion, motion, rotation, blurring, noise, color changes, etc.
 

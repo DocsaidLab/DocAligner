@@ -9,6 +9,8 @@ ROOT = Path('/data/Dataset')
 
 MIDV_ROOT = str(ROOT / 'midv_dataset')
 
+MIDV2020_ROOT = str(ROOT / 'MIDV2020')
+
 INDOOR_ROOT = str(ROOT / 'indoor_scene_recognition')
 
 CORD_ROOT = str(ROOT / 'cord_v0')
@@ -28,7 +30,7 @@ def build_midv_dataset():
 
     The function performs the following steps:
         1. Read all .tif image files from the MIDV_ROOT directory.
-        2. Extract information from the filenames to identify the imaging type
+        2. Extract information from the filenames to identify the image type
             and person ID.
         3. Check if the filename matches the expected pattern, otherwise skip
             the file.
@@ -37,16 +39,16 @@ def build_midv_dataset():
         5. Store the dataset in the 'midv_dataset.json' file.
     """
     dataset = {}
-    imaging_type_pattern = re.compile(r'^[A-Z]{2}\d{2}_\d{2}$')
+    image_type_pattern = re.compile(r'^[A-Z]{2}\d{2}_\d{2}$')
     midv_fs = D.get_files(MIDV_ROOT, suffix=['.tif'])
     for f in D.Tqdm(midv_fs):
 
-        if imaging_type_pattern.match(f.stem) is None:
+        if image_type_pattern.match(f.stem) is None:
             print(f'A demo file: {str(f.name)}, skip.')
             continue
 
         name_info = f.stem.split('_')[0]
-        imaging_type = name_info[0:2]
+        image_type = name_info[0:2]
         person_id = int(name_info[2:])
         gt_path = str(f).replace(
             'images', 'ground_truth').replace('.tif', '.json')
@@ -57,9 +59,22 @@ def build_midv_dataset():
         dataset[person_id].append({
             'img_path': str(f).replace(MIDV_ROOT, 'midv_dataset'),
             'gt_path': gt_path.replace(MIDV_ROOT, 'midv_dataset'),
-            'imaging_type': imaging_type,
+            'image_type': image_type,
         })
     D.dump_json(dataset, DIR / 'midv_dataset.json')
+
+
+def build_midv2020_dataset():
+    dataset = []
+    midv_fs = D.get_files(MIDV2020_ROOT, suffix=['.jpg'])
+    for f in D.Tqdm(midv_fs):
+        gt_path = str(f).replace('images', 'annotations')
+        gt_path = str(D.Path(gt_path).parent) + '.json'
+        dataset.append({
+            'img_path': str(f).replace(MIDV2020_ROOT, 'MIDV2020'),
+            'gt_path': gt_path.replace(MIDV2020_ROOT, 'MIDV2020'),
+        })
+    D.dump_json(dataset, DIR / 'midv2020_dataset.json')
 
 
 def build_indoor_dataset():
@@ -131,3 +146,4 @@ if __name__ == '__main__':
     build_midv_dataset()
     build_indoor_dataset()
     build_cord_v0_dataset()
+    build_midv2020_dataset()

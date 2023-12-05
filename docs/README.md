@@ -18,11 +18,12 @@
 - [資料集介紹](#資料集介紹)
 - [資料集預處理](#資料集預處理)
 - [資料集實作](#資料集實作)
-   - [1. MIDV-500 資料集](#1-midv-500-資料集)
-   - [2. MIDV-2019 資料集](#2-midv-2019-資料集)
-   - [3. CORD v0 資料集](#3-cord-v0-資料集)
-   - [4. 合成資料集](#4-合成資料集)
-   - [5. 影像增強](#5-影像增強)
+    - [1. MIDV-500 資料集](#1-midv-500-資料集)
+    - [2. MIDV-2019 資料集](#2-midv-2019-資料集)
+    - [3. MIDV-2020 資料集](#3-midv-2020-資料集)
+    - [4. CORD v0 資料集](#4-cord-v0-資料集)
+    - [5. 合成資料集](#5-合成資料集)
+    - [6. 影像增強](#6-影像增強)
 - [構建訓練環境](#構建訓練環境)
 - [執行訓練（Based on Docker）](#執行訓練based-on-docker)
 
@@ -32,6 +33,10 @@
    - [**MIDV**](https://github.com/fcakyon/midv500)
    - MIDV-500 由 50 個不同身分證明文件類型的500 個影片片段組成，包括 17 個身分證、14 個護照、13 個駕照和 6 個不同國家的其他身分證明文件，並具有真實性，可以對各種文件分析問題進行廣泛的研究。
    - MIDV-2019 資料集包含扭曲和低光影像。
+
+- **MIDV-2020:**
+   - [**MIDV2020**](http://l3i-share.univ-lr.fr/MIDV2020/midv2020.html)
+   - MIDV-2020 包含 10 種文件類型，其中包括 1000 個帶註釋的影片剪輯、1000 個掃描影像和 1000 個獨特模擬身分文件的 1000 張照片，每個文件都具有唯一的文字欄位值和唯一的人工生成的面孔。
 
 - **Indoor Scenes**
    - [**Indoor**](https://web.mit.edu/torralba/www/indoor.html)
@@ -64,7 +69,10 @@
       python download_midv.py
       ```
 
-    - **MIT室內場景 & CORD v0:**
+    - **MIDV-2020：**
+      訪問 [MIDV2020](http://l3i-share.univ-lr.fr/MIDV2020/midv2020.html) 並按照其下載說明操作。
+
+    - **室內場景 & CORD v0:**
       訪問各自的鏈接，並按照其下載說明操作。
 
 3. **建構資料集：**
@@ -119,7 +127,26 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv2019_test_img.jpg')
     <img src="./midv2019_test_img.jpg" width="300">
 </div>
 
-### 3. CORD v0 資料集
+### 3. MIDV-2020 資料集
+
+```python
+import docsaidkit as D
+from model.dataset import MIDV2020Dataset
+
+ds = MIDV2020Dataset(
+    root="/data/Dataset" # 請替換成您的資料集目錄
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=3), 'midv2020_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./midv2020_test_img.jpg" width="300">
+</div>
+
+
+### 4. CORD v0 資料集
 
 ```python
 import docsaidkit as D
@@ -137,7 +164,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'cordv0_test_img.jpg')
     <img src="./cordv0_test_img.jpg" width="300">
 </div>
 
-### 4. 合成資料集
+### 5. 合成資料集
 
 考慮到資料集的不足，我們使用動態合成影像技術。
 
@@ -164,7 +191,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=2), 'sync_test_img.jpg')
 </div>
 
 
-### 5. 影像增強
+### 6. 影像增強
 
 儘管我們已經收集了一些的資料，但是這些資料的多樣性仍然不足。為了增加資料的多樣性，我們使用了影像增強技術，這些技術可以模擬圖像在拍攝時的各種情況，例如遮擋、移動、旋轉、模糊、噪聲、顏色變化等等。
 
