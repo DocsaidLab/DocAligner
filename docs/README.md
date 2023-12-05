@@ -12,27 +12,37 @@
 
 本專案是一個專注於證件（文件）等各類文本定位之視覺系統。我們對於該系統的期待主要為提供圖像中文本的四個角點之預測。這項功能在面對金融科技、銀行及共享經濟服務時的應用中至關重要，對於各種圖像處理和文本分析應用來說，可以降低後續任務的錯誤和運算量。
 
+## 目錄
+- [介紹](#介紹)
+- [目錄](#目錄)
+- [資料集介紹](#資料集介紹)
+- [資料集預處理](#資料集預處理)
+- [資料集實作](#資料集實作)
+   - [1. 讀取 MIDV-500 資料集](#1-讀取-midv-500-資料集)
+   - [2. 讀取 MIDV-2019 資料集](#2-讀取-midv-2019-資料集)
+   - [3. 讀取 CORD v0 資料集](#3-讀取-cord-v0-資料集)
+   - [4. 合成資料集](#4-合成資料集)
+   - [5. 影像增強](#5-影像增強)
+- [構建訓練環境](#構建訓練環境)
+- [執行訓練（Based on Docker）](#執行訓練based-on-docker)
+
 ## 資料集介紹
 
 - **MIDV-500/MIDV-2019**
-   - [Dataset](https://github.com/fcakyon/midv500)
+   - [**MIDV**](https://github.com/fcakyon/midv500)
    - MIDV-500 由 50 個不同身分證明文件類型的500 個影片片段組成，包括 17 個身分證、14 個護照、13 個駕照和 6 個不同國家的其他身分證明文件，並具有真實性，可以對各種文件分析問題進行廣泛的研究。
    - MIDV-2019 資料集包含扭曲和低光影像。
 
-- **MIDV-2020:**
-   - [Dataset](http://l3i-share.univ-lr.fr/MIDV2020/midv2020.html)
-   - MIDV-2020 包含 10 種文件類型，其中包括 1000 個帶註釋的影片剪輯、1000 個掃描影像和 1000 個獨特模擬身分文件的 1000 張照片，每個文件都具有唯一的文字欄位值和唯一的人工生成的面孔。
-
-- **MIT 室內場景**
-   - [Dataset](https://web.mit.edu/torralba/www/indoor.html)
+- **Indoor Scenes**
+   - [**Indoor**](https://web.mit.edu/torralba/www/indoor.html)
    - 該資料集包含 67 個室內類別，總共 15,620 張圖像。圖像數量因類別而異，但每個類別至少有 100 張圖像。所有圖片均為 jpg 格式。
 
 - **CORD v0**
-   - [Dataset](https://github.com/clovaai/cord)
+   - [**CORD**](https://github.com/clovaai/cord)
    - 該資料集由數千張印尼收據組成，其中包含用於 OCR 的圖像文字註釋，以及用於解析的多層語義標籤。所提出的資料集可用於解決各種 OCR 和解析任務。
 
 - **Docpool**
-   - [Dataset](./data/docpool/)
+   - [**Docpool**](./data/docpool/)
    - 我們自行從網路收集各類文本影像，用在動態合成影像技術作為訓練資料集。
 
 
@@ -66,6 +76,141 @@
     ```
 
    完成後，會產生多個 `.json` 檔案。這些檔案包含了資料集的所有資訊，包括圖像路徑、標籤、圖像大小等等。
+
+## 資料集實作
+
+我們針對上述的幾個資料集，進行對應於 pytorch 訓練的資料集實作，請參考 [dataset.py](./model/dataset.py)。
+
+以下我們實際展示如何讀取資料集：
+
+### 1. 讀取 MIDV-500 資料集
+
+```python
+import docsaidkit as D
+from model.dataset import MIDV500Dataset
+
+ds = MIDV500Dataset(
+    root="/data/Dataset" # 請替換成您的資料集目錄
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv500_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./midv500_test_img.jpg" width="300">
+</div>
+
+### 2. 讀取 MIDV-2019 資料集
+
+```python
+import docsaidkit as D
+from model.dataset import MIDV2019Dataset
+
+ds = MIDV2019Dataset(
+    root="/data/Dataset" # 請替換成您的資料集目錄
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv2019_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./midv2019_test_img.jpg" width="300">
+</div>
+
+### 3. 讀取 CORD v0 資料集
+
+```python
+import docsaidkit as D
+from model.dataset import CordDataset
+
+ds = CordDataset(
+    root="/data/Dataset" # 請替換成您的資料集目錄
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=5), 'cordv0_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./cordv0_test_img.jpg" width="300">
+</div>
+
+### 4. 合成資料集
+
+考慮到資料集的不足，我們使用動態合成影像技術。
+
+簡單來說，我們先收集了一份 Docpool 資料集，其中包含了從網路上找到的各類證件和文件的影像。接著，我們找來了 Indoor 資料集作為背景，然後將 Docpool 內的資料，合成到背景上。
+
+此外，MIDV-500/MIDV-2019/CORD 資料集中，也都有對應的 Polygon 資料，秉持著不浪費的精神，我們也會將 Docpool 內的圖片合成到這些資料集上，以增加資料集的多樣性。
+
+總之，拿來用就對了，實作細節什麼的，您不感興趣就直接放到一邊就好。
+
+```python
+import docsaidkit as D
+from model.dataset import SyncDataset
+
+ds = SyncDataset(
+    root="/data/Dataset" # 請替換成您的資料集目錄
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=2), 'sync_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./sync_test_img.jpg" width="300">
+</div>
+
+
+### 5. 影像增強
+
+儘管我們已經收集了一些的資料，但是這些資料的多樣性仍然不足。為了增加資料的多樣性，我們使用了影像增強技術，這些技術可以模擬圖像在拍攝時的各種情況，例如遮擋、移動、旋轉、模糊、噪聲、顏色變化等等。
+
+```python
+import cv2
+import numpy as np
+import docsaidkit as D
+import docsaidkit.torch as DT
+import albumentations as A
+
+class DefaultImageAug:
+
+    def __init__(self, p=0.5):
+        self.coarse_drop_aug = DT.CoarseDropout(
+            max_holes=1, max_height=64, max_width=64, p=p)
+        self.aug = A.Compose([
+            DT.ShiftScaleRotate(
+                shift_limit=0.2,
+                scale_limit=[-0.4, 0.2],
+                border_mode=cv2.BORDER_CONSTANT),
+            A.MotionBlur(),
+            A.GaussNoise(),
+            A.ColorJitter(),
+            A.ChannelShuffle(),
+            A.HorizontalFlip(),
+            A.VerticalFlip(),
+            A.RandomRotate90(),
+            A.Perspective(),
+            A.GaussianBlur(blur_limit=(7, 11), p=0.5),
+        ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
+
+    def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
+        img = self.coarse_drop_aug(image=image)['image']
+        img, kps = self.aug(image=img, keypoints=keypoints).values()
+        kps = D.order_points_clockwise(np.array(kps))
+        return img, kps
+```
+
+- **CoarseDropout**
+   - 這個增強技術會隨機在圖像中產生一個矩形區域，並將該區域內的像素值設置為 0。可以模擬圖像中的遮擋，例如圖像中的文字被其他物體遮擋的情況。
+
+- **GaussianBlur**
+    - 這個增強技術會對圖像進行高斯模糊。可以模擬圖像在拍攝時的高斯模糊，次外，合成影像會有比較銳利的邊緣特徵，這個增強技術可以模糊邊緣特徵。讓他們看起來更像真實的影像。
+
+- **Others**
+    - 這些增強技術可以模擬圖像在拍攝時的各種情況，例如移動、旋轉、模糊、噪聲、顏色變化等等。
 
 ## 構建訓練環境
 

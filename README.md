@@ -12,6 +12,20 @@
 
 This project is a visual system focused on the localization of documents in the image. Our primary aim for this system is to provide predictions of the four corners of documents. This feature is critically important in applications dealing with fintech, banking, and the shared economy, offering a reduction in errors and computational requirements for various image processing and text analysis tasks.
 
+## Table of Contents
+- [Introduction](#introduction)
+- [Table of Contents](#table-of-contents)
+- [Dataset](#dataset)
+- [Dataset Preprocessing](#dataset-preprocessing)
+- [Dataset Implementation](#dataset-implementation)
+   - [1. Loading the MIDV-500 Dataset](#1-loading-the-midv-500-dataset)
+   - [2. Loading the MIDV-2019 Dataset](#2-loading-the-midv-2019-dataset)
+   - [3. Loading the CORD v0 Dataset](#3-loading-the-cord-v0-dataset)
+   - [4. Synthetic Dataset](#4-synthetic-dataset)
+   - [5. Image Augmentation](#5-image-augmentation)
+- [Building the Training Environment](#building-the-training-environment)
+- [Running Training (Based on Docker)](#running-training-based-on-docker)
+
 ## Dataset
 
 - **MIDV-500/MIDV-2019**
@@ -62,6 +76,141 @@ This project is a visual system focused on the localization of documents in the 
 
    This process will generate several `.json` files containing all dataset information, including image paths, labels, image sizes, etc.
 
+## Dataset Implementation
+
+We have implemented datasets corresponding to the several mentioned datasets for training in PyTorch. Please refer to [dataset.py](./model/dataset.py).
+
+Below, we demonstrate how to load these datasets:
+
+### 1. Loading the MIDV-500 Dataset
+
+```python
+import docsaidkit as D
+from model.dataset import MIDV500Dataset
+
+ds = MIDV500Dataset(
+    root="/data/Dataset" # Replace with your dataset directory
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv500_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./docs/midv500_test_img.jpg" width="300">
+</div>
+
+### 2. Loading the MIDV-2019 Dataset
+
+```python
+import docsaidkit as D
+from model.dataset import MIDV2019Dataset
+
+ds = MIDV2019Dataset(
+    root="/data/Dataset" # Replace with your dataset directory
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv2019_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./docs/midv2019_test_img.jpg" width="300">
+</div>
+
+### 3. Loading the CORD v0 Dataset
+
+```python
+import docsaidkit as D
+from model.dataset import CordDataset
+
+ds = CordDataset(
+    root="/data/Dataset" # Replace with your dataset directory
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=5), 'cordv0_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./docs/cordv0_test_img.jpg" width="300">
+</div>
+
+### 4. Synthetic Dataset
+
+Considering the limitations of the datasets, we use dynamic image synthesis technology.
+
+In simple terms, we first collected a Docpool dataset, which includes images of various documents and IDs found on the internet. Then, we used the Indoor dataset as a background and synthesized the data from Docpool onto this background.
+
+Furthermore, the MIDV-500/MIDV-2019/CORD datasets also have corresponding Polygon data. We also synthesize the images from Docpool onto these datasets to increase their diversity.
+
+In short, just use it, and don't worry about the implementation details.
+
+```python
+import docsaidkit as D
+from model.dataset import SyncDataset
+
+ds = SyncDataset(
+    root="/data/Dataset" # Replace with your dataset directory
+)
+
+img, poly = ds[0]
+D.imwrite(D.draw_polygon(img, poly, thickness=2), 'sync_test_img.jpg')
+```
+
+<div align="center">
+    <img src="./docs/sync_test_img.jpg" width="300">
+</div>
+
+
+### 5. Image Augmentation
+
+Despite having collected some data, the diversity of these datasets is still insufficient. To increase the diversity, we use image augmentation techniques, which can simulate various conditions during image capture, such as occlusion, motion, rotation, blurring, noise, color changes, etc.
+
+```python
+import cv2
+import numpy as np
+import docsaidkit as D
+import docsaidkit.torch as DT
+import albumentations as A
+
+class DefaultImageAug:
+
+    def __init__(self, p=0.5):
+        self.coarse_drop_aug = DT.CoarseDropout(
+            max_holes=1, max_height=64, max_width=64, p=p)
+        self.aug = A.Compose([
+            DT.ShiftScaleRotate(
+                shift_limit=0.2,
+                scale_limit=[-0.4, 0.2],
+                border_mode=cv2.BORDER_CONSTANT),
+            A.MotionBlur(),
+            A.GaussNoise(),
+            A.ColorJitter(),
+            A.ChannelShuffle(),
+            A.HorizontalFlip(),
+            A.VerticalFlip(),
+            A.RandomRotate90(),
+            A.Perspective(),
+            A.GaussianBlur(blur_limit=(7, 11), p=0.5),
+        ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
+
+    def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
+        img = self.coarse_drop_aug(image=image)['image']
+        img, kps = self.aug(image=img, keypoints=keypoints).values()
+        kps = D.order_points_clockwise(np.array(kps))
+        return img, kps
+```
+
+- **CoarseDropout**
+   - This augmentation technique randomly generates a rectangular area in the image and sets the pixel values in that area to 0. It can simulate occlusions in images, such as when text is obscured by other objects.
+
+- **GaussianBlur**
+    - This technique applies Gaussian blur to the image. It can simulate Gaussian blur during image capture and blur sharp edge features in synthetic images, making them look more like real images.
+
+- **Others**
+    - These augmentation techniques can simulate various conditions during image capture, such as motion, rotation, blurring
+
 ## Building the Training Environment
 
 First, ensure you have built the base image `docsaid_training_base_image` from `DocsaidKit`. If not, refer to `DocsaidKit` documentation. Then, use the following command to build the Docker image for DocAligned work:
@@ -90,8 +239,6 @@ Our default [Dockerfile](./docker/Dockerfile) is specifically designed for docum
     - `apt-get update && apt-get install -y gosu && rm -rf /var/lib/apt/lists/*` updates the package list, installs `gosu`, and then cleans up unnecessary files to reduce image size.
 
 5. **Create Entry Point Script**
-
-
     - A series of `RUN` commands create the entry point script `/entrypoint.sh`.
     - The script first checks if environment variables `USER_ID` and `GROUP_ID` are set. If so, it creates a new user and group with the same IDs and runs commands as that user.
     - Useful for handling file permission issues inside and outside the container, especially when the container needs to access files on the host machine.
