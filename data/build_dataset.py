@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
+import cv2
 import docsaidkit as D
 
 DIR = D.get_curdir(__file__)
@@ -14,6 +16,8 @@ MIDV2020_ROOT = str(ROOT / 'MIDV2020')
 INDOOR_ROOT = str(ROOT / 'indoor_scene_recognition')
 
 CORD_ROOT = str(ROOT / 'cord_v0')
+
+SMARTDOC_ROOT = str(ROOT / 'SmartDoc2015')
 
 
 def build_midv_dataset():
@@ -41,7 +45,7 @@ def build_midv_dataset():
     dataset = {}
     image_type_pattern = re.compile(r'^[A-Z]{2}\d{2}_\d{2}$')
     midv_fs = D.get_files(MIDV_ROOT, suffix=['.tif'])
-    for f in D.Tqdm(midv_fs):
+    for f in D.Tqdm(midv_fs, desc='Processing MIDV-500/2019'):
 
         if image_type_pattern.match(f.stem) is None:
             print(f'A demo file: {str(f.name)}, skip.')
@@ -67,7 +71,7 @@ def build_midv_dataset():
 def build_midv2020_dataset():
     dataset = []
     midv_fs = D.get_files(MIDV2020_ROOT, suffix=['.jpg'])
-    for f in D.Tqdm(midv_fs):
+    for f in D.Tqdm(midv_fs, desc='Processing MIDV-2020'):
         gt_path = str(f).replace('images', 'annotations')
         gt_path = str(D.Path(gt_path).parent) + '.json'
         dataset.append({
@@ -105,7 +109,7 @@ def build_indoor_dataset():
     """
     dataset = []
     indoor_fs = D.get_files(Path(INDOOR_ROOT) / 'Images', suffix=['.jpg'])
-    for f in D.Tqdm(indoor_fs):
+    for f in D.Tqdm(indoor_fs, desc='Processing Indoor Scene'):
         dataset.append({
             'scene': f.parent.name,
             'img_path': str(f).replace(INDOOR_ROOT, 'indoor_scene_recognition'),
@@ -142,8 +146,56 @@ def build_cord_v0_dataset():
         D.dump_json(dataset, DIR / f'cord_v0_{mode}_dataset.json')
 
 
+def build_smart_doc_2015_dataset():
+    dataset = {}
+    smartdoc_fs = D.get_files(SMARTDOC_ROOT, suffix=['.avi'])
+    for f in D.Tqdm(smartdoc_fs, desc='Processing SmartDoc2015'):
+        frames = D.video2frames(f)
+        background = f.parent.name
+        gt_path = f.with_suffix('.gt.xml')
+        xml_root = ET.fromstring(gt_path.read_text())
+
+        # Extract corner points for each frame
+        for frame in xml_root.findall('.//segmentation_results/frame'):
+            frame_index = int(frame.get('index')) - 1
+            if frame.get('rejected') == 'false':
+                corner_points = {}
+                for point in frame:
+                    name = point.get('name')
+                    x = float(point.get('x'))
+                    y = float(point.get('y'))
+                    corner_points[name] = (x, y)
+
+                corner_points = [
+                    corner_points['tl'],
+                    corner_points['tr'],
+                    corner_points['br'],
+                    corner_points['bl'],
+                ]
+
+                if not (fp := D.Path(SMARTDOC_ROOT) / '_smartdoc2015' / background).is_dir():
+                    fp.mkdir(parents=True)
+
+                D.imwrite(frames[frame_index], fp /
+                          f'{f.stem}_{frame_index}.jpg')
+                D.dump_json(corner_points, fp / f'{f.stem}_{frame_index}.json')
+
+                if background not in dataset:
+                    dataset[background] = []
+
+                dataset[background].append(
+                    {
+                        'img_path': str(fp / f'{f.stem}_{frame_index}.jpg'),
+                        'gt_path': str(fp / f'{f.stem}_{frame_index}.json'),
+                    }
+                )
+
+    D.dump_json(dataset, DIR / 'smartdoc2015_dataset.json')
+
+
 if __name__ == '__main__':
     build_midv_dataset()
     build_indoor_dataset()
     build_cord_v0_dataset()
     build_midv2020_dataset()
+    build_smart_doc_2015_dataset()
