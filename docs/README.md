@@ -18,9 +18,9 @@
 - [資料集介紹](#資料集介紹)
 - [資料集預處理](#資料集預處理)
 - [資料集實作](#資料集實作)
-   - [1. 讀取 MIDV-500 資料集](#1-讀取-midv-500-資料集)
-   - [2. 讀取 MIDV-2019 資料集](#2-讀取-midv-2019-資料集)
-   - [3. 讀取 CORD v0 資料集](#3-讀取-cord-v0-資料集)
+   - [1. MIDV-500 資料集](#1-midv-500-資料集)
+   - [2. MIDV-2019 資料集](#2-midv-2019-資料集)
+   - [3. CORD v0 資料集](#3-cord-v0-資料集)
    - [4. 合成資料集](#4-合成資料集)
    - [5. 影像增強](#5-影像增強)
 - [構建訓練環境](#構建訓練環境)
@@ -83,7 +83,7 @@
 
 以下我們實際展示如何讀取資料集：
 
-### 1. 讀取 MIDV-500 資料集
+### 1. MIDV-500 資料集
 
 ```python
 import docsaidkit as D
@@ -101,7 +101,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv500_test_img.jpg')
     <img src="./midv500_test_img.jpg" width="300">
 </div>
 
-### 2. 讀取 MIDV-2019 資料集
+### 2. MIDV-2019 資料集
 
 ```python
 import docsaidkit as D
@@ -119,7 +119,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv2019_test_img.jpg')
     <img src="./midv2019_test_img.jpg" width="300">
 </div>
 
-### 3. 讀取 CORD v0 資料集
+### 3. CORD v0 資料集
 
 ```python
 import docsaidkit as D

@@ -18,9 +18,9 @@ This project is a visual system focused on the localization of documents in the 
 - [Dataset](#dataset)
 - [Dataset Preprocessing](#dataset-preprocessing)
 - [Dataset Implementation](#dataset-implementation)
-   - [1. Loading the MIDV-500 Dataset](#1-loading-the-midv-500-dataset)
-   - [2. Loading the MIDV-2019 Dataset](#2-loading-the-midv-2019-dataset)
-   - [3. Loading the CORD v0 Dataset](#3-loading-the-cord-v0-dataset)
+   - [1. MIDV-500 Dataset](#1-midv-500-dataset)
+   - [2. MIDV-2019 Dataset](#2-midv-2019-dataset)
+   - [3. CORD v0 Dataset](#3-cord-v0-dataset)
    - [4. Synthetic Dataset](#4-synthetic-dataset)
    - [5. Image Augmentation](#5-image-augmentation)
 - [Building the Training Environment](#building-the-training-environment)
@@ -82,7 +82,7 @@ We have implemented datasets corresponding to the several mentioned datasets for
 
 Below, we demonstrate how to load these datasets:
 
-### 1. Loading the MIDV-500 Dataset
+### 1. MIDV-500 Dataset
 
 ```python
 import docsaidkit as D
@@ -100,7 +100,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv500_test_img.jpg')
     <img src="./docs/midv500_test_img.jpg" width="300">
 </div>
 
-### 2. Loading the MIDV-2019 Dataset
+### 2. MIDV-2019 Dataset
 
 ```python
 import docsaidkit as D
@@ -118,7 +118,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'midv2019_test_img.jpg')
     <img src="./docs/midv2019_test_img.jpg" width="300">
 </div>
 
-### 3. Loading the CORD v0 Dataset
+### 3. CORD v0 Dataset
 
 ```python
 import docsaidkit as D
