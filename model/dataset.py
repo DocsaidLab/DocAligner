@@ -166,6 +166,10 @@ class CordDataset(BaseDataset):
 
 class SmartDocDataset(BaseDataset):
 
+    def __init__(self, return_tensor: bool = False, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.return_tensor = return_tensor
+
     def _build(self):
         ds = D.load_json(DIR.parent / 'data' / 'smartdoc2015_dataset.json')
         dataset = []
@@ -193,6 +197,12 @@ class SmartDocDataset(BaseDataset):
             img, poly = self._resize_poly(img, poly)
 
         img, poly = self.aug_func(image=img, keypoints=poly)
+
+        if self.return_tensor:
+            poly = D.Polygon(poly).normalize(
+                w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
+            img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
+
         return img, poly, key
 
 

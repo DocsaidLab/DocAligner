@@ -4,7 +4,7 @@ common:
   is_restore: False
   restore_ind: ""
   restore_ckpt: ""
-  preview_batch: 500
+  preview_batch: 10000
 
 trainer:
   max_epochs: 500
@@ -18,20 +18,16 @@ trainer:
 model:
   name: DocAlignedModel
   backbone:
-    name: lcnet_100
-    pretrained: True
-    features_only: True
-  neck:
-    name: bifpns
-    out_channels: 64
-    n_bifpn: 3
-  head:
-    name: DocAlignedHead
+    name: Backbone
     options:
-      in_channels: 64
-      out_channels: 1
+      name: lcnet_100
+      pretrained: False
+      features_only: True
+  head:
+    name: PointRegHead
+    options:
+      in_channels: 512
       num_points: 8
-
 
 dataset:
   train_options:
@@ -40,14 +36,20 @@ dataset:
       root: /data/Dataset
       image_size: [256, 256]
       aug_ratio: 1
-      length_of_dataset: 100000
+      fuse_dataset:
+        - midv500
+        - midv2019
+        - midv2020
+        - cord
+        - sync
+      fuse_ratio: [0.2, 0.2, 0.2, 0.05, 0.35]
+      length_of_dataset: 160000
   valid_options:
-    name: DocAlignedDataset
+    name: SmartDocDataset
     options:
       root: /data/Dataset
       image_size: [256, 256]
-      aug_ratio: 1
-      length_of_dataset: 1000
+      return_tensor: True
 
 dataloader:
   train_options:
@@ -55,7 +57,6 @@ dataloader:
     num_workers: 32
     shuffle: False
     drop_last: False
-    pin_memory: True
   valid_options:
     batch_size: -1
     num_workers: 32
@@ -72,10 +73,10 @@ optimizer:
     amsgrad: False
 
 lr_scheduler:
-  name: "MultiStepLRWarmUp"
+  name: MultiStepLRWarmUp
   options:
     warmup_milestone: 1000
-    milestones: [50000, 100000]
+    milestones: [100000, 200000]
     gamma: 0.316227766
   pl_options:
     monitor: loss
@@ -84,7 +85,7 @@ lr_scheduler:
 callbacks:
   - name: ModelCheckpoint
     options:
-      monitor: val_nls_scores
+      monitor: val_iou
       mode: max
       verbose: True
       save_last: True
