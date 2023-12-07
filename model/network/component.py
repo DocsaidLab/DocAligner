@@ -34,6 +34,7 @@ class PointRegHead(nn.Module):
         self,
         in_channels: int,
         num_points: int,
+        **kwargs,
     ) -> None:
         super().__init__()
         self.point_feats = nn.Sequential(
@@ -47,6 +48,101 @@ class PointRegHead(nn.Module):
         feats = self.point_feats(x[-1])
         points = self.point_reg(feats)
         return points,
+
+
+class PointRegBNHead(nn.Module):
+
+    def __init__(
+        self,
+        in_channels: int,
+        num_points: int,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+        self.point_feats = nn.Sequential(
+            DT.GAP(),
+            nn.Linear(in_channels, in_channels),
+            nn.BatchNorm1d(in_channels),
+        )
+        self.point_reg = nn.Linear(in_channels, num_points)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        feats = self.point_feats(x[-1])
+        points = self.point_reg(feats)
+        return points,
+
+
+class PointRegFeatMergeHead(nn.Module):
+
+    def __init__(
+        self,
+        in_channels_list: List[int],
+        out_channels: int,
+        num_points: int,
+        in_channels: int = None,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+
+        # Override in_channels_list
+        if in_channels is not None:
+            in_channels_list = [in_channels] * 5
+
+        self.point_feats = nn.ModuleList([
+            nn.Sequential(
+                DT.GAP(),
+                nn.Linear(in_c, out_channels),
+                nn.LayerNorm(out_channels),
+            )
+            for in_c in in_channels_list
+        ])
+
+        self.point_reg = nn.Linear(out_channels * 5, num_points)
+
+    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+        feats = [point_feat(x) for point_feat, x in zip(self.point_feats, xs)]
+        feats = torch.cat(feats, dim=1)
+        points = self.point_reg(feats)
+        return points,
+
+
+class PointRegFeatMergeEdgeHead(nn.Module):
+
+    def __init__(
+        self,
+        in_channels_list: List[int],
+        out_channels: int,
+        num_points: int,
+        in_channels: int = None,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+
+        # Override in_channels_list
+        if in_channels is not None:
+            in_channels_list = [in_channels] * 5
+
+        self.point_feats = nn.ModuleList([
+            nn.Sequential(
+                DT.GAP(),
+                nn.Linear(in_c, out_channels),
+                nn.LayerNorm(out_channels),
+            )
+            for in_c in in_channels_list
+        ])
+
+        self.point_reg = nn.Linear(out_channels * 5, num_points)
+
+        self.edge_reg = nn.Sequential(
+            nn.Conv2d(in_channels, 1, 3, padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+        feats = [point_feat(x) for point_feat, x in zip(self.point_feats, xs)]
+        feats = torch.cat(feats, dim=1)
+        points = self.point_reg(feats)
+        return points, self.edge_reg(xs[0])
 
 
 class DocAlignedHead(nn.Module):
@@ -150,10 +246,9 @@ class ViT(nn.Module):
 
     def __init__(
         self,
-        in_channels: int,
         d_model: int,
         num_layers: int,
-        num_points: int,
+        in_channels: int = 3,
         image_size: List[int] = [256, 256],
         patch_size: int = 16,
         **kwargs,
@@ -175,6 +270,7 @@ class ViT(nn.Module):
             d_model,
             patch_size,
             patch_size,
+            bias=False
         )
 
         self.encoder = nn.TransformerEncoder(
@@ -188,13 +284,6 @@ class ViT(nn.Module):
             num_layers=num_layers
         )
 
-        self.point_reg = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.Linear(d_model, d_model),
-            nn.BatchNorm1d(d_model),
-            nn.Linear(d_model, num_points)
-        )
-
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.tokenizer(x)
         x = x.flatten(2).permute(2, 0, 1)
@@ -202,6 +291,22 @@ class ViT(nn.Module):
         cls_tokens = self.cls_token.expand(-1, x.size(1), -1)
         x = torch.cat((cls_tokens, x), dim=0)
         x = self.encoder(x)
-        cls_token, _ = torch.split(x, [1, x.size(0) - 1], dim=0)
-        points = self.point_reg(cls_token.squeeze(0))
-        return points
+        cls_token, img_token = torch.split(x, [1, x.size(0) - 1], dim=0)
+        return cls_token.squeeze(0), img_token
+
+
+class ViTPointRegHead(nn.Module):
+
+    def __init__(
+        self,
+        in_channels: int,
+        num_points: int,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+        self.point_reg = nn.Linear(in_channels, num_points)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        cls_token, _ = x
+        points = self.point_reg(cls_token)
+        return points,

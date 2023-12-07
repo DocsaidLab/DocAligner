@@ -31,15 +31,18 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
             self.backbone = globals()[cfg_model['backbone']['name']](
                 **cfg_model['backbone']['options'])
 
-            with torch.no_grad():
-                dummy = torch.rand(1, 3, 128, 128)
-                channels = [i.size(1) for i in self.backbone(dummy)]
+            channels = []
+            if cfg_model['backbone']['name'] == 'Backbone':
+                with torch.no_grad():
+                    dummy = torch.rand(1, 3, 128, 128)
+                    channels = [i.size(1) for i in self.backbone(dummy)]
 
         if hasattr(cfg_model, 'neck'):
             cfg_model['neck'].update({'in_channels_list': channels})
             self.neck = DT.build_neck(**cfg_model['neck'])
 
         if hasattr(cfg_model, 'head'):
+            cfg_model['head']['options'].update({'in_channels_list': channels})
             self.head = globals()[cfg_model['head']['name']](
                 **cfg_model['head']['options'])
 
@@ -58,12 +61,24 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         imgs, boxes, polys, edges, edge_masks = batch
-        preds, *_ = self.forward(imgs)
+        preds, *other_branchs = self.forward(imgs)
         pred_polys = preds.reshape(-1, 4, 2)
         loss = self.loss_fn_point(pred_polys, polys)
 
+        # edge loss
+        edge_args = {}
+        if len(other_branchs) > 0:
+            pred_edges = other_branchs[0].squeeze(1)
+            loss_edge = self.loss_fn_edge(
+                pred_edges, edges, torch.zeros_like(edges))
+            loss += loss_edge
+            edge_args.update({
+                'edges': edges,
+                'pred_edges': pred_edges,
+            })
+
         if batch_idx % self.preview_batch == 0:
-            self.preview(batch_idx, imgs, polys, pred_polys)
+            self.preview(batch_idx, imgs, polys, pred_polys, **edge_args)
 
         self.log_dict(
             {
@@ -155,16 +170,21 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
             img_path.mkdir(parents=True)
         return img_path
 
-    def preview(self, batch_idx, imgs, polys, pred_polys, suffix='train'):
+    def preview(self, batch_idx, imgs, polys, pred_polys, edges=None,
+                pred_edges=None, suffix='train'):
         preview_dir = self.preview_dir / f'{suffix}_batch_{batch_idx}'
         if not preview_dir.exists():
             preview_dir.mkdir(parents=True)
         imgs = imgs.detach().cpu().numpy()
         polys = polys.detach().cpu().numpy()
         pred_polys = pred_polys.reshape(-1, 4, 2).detach().cpu().numpy()
+        edges = edges.detach().cpu().numpy() \
+            if edges is not None else [None] * len(imgs)
+        pred_edges = pred_edges.detach().cpu().numpy() \
+            if pred_edges is not None else [None] * len(imgs)
 
-        for idx, (img, poly, pred_poly) in \
-                enumerate(zip(imgs, polys, pred_polys)):
+        for idx, (img, poly, pred_poly, edge, pred_edge) in \
+                enumerate(zip(imgs, polys, pred_polys, edges, pred_edges)):
             img = np.uint8(np.transpose(img, (1, 2, 0)) * 255)
             poly = D.Polygon(poly, normalized=True).denormalize(
                 *img.shape[:2][::-1])
@@ -175,7 +195,14 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
                 img.copy(), poly, color=(0, 255, 255), thickness=2)
             img2 = D.draw_polygon(
                 img.copy(), pred_poly, color=(255, 0, 255), thickness=2)
-
             img_output = np.concatenate([img1, img2], axis=1)
+
+            if edge is not None and pred_edge is not None:
+                edge = np.stack([np.uint8(edge * 255)] * 3, axis=-1)
+                pred_edge = np.stack([np.uint8(pred_edge * 255)] * 3, axis=-1)
+                img_edge = np.concatenate([edge, pred_edge], axis=1)
+                img_edge = D.imresize(img_edge, (None, img_output.shape[1]))
+                img_output = np.concatenate([img_output, img_edge], axis=0)
+
             img_output_name = str(preview_dir / f'{idx}.jpg')
             D.imwrite(img_output, img_output_name)
