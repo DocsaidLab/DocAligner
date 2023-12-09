@@ -19,8 +19,8 @@ class DefaultImageAug:
         self.aug = A.Compose([
             DT.ShiftScaleRotate(
                 shift_limit=0.2,
-                scale_limit=[-0.4, 0.2],
-                border_mode=cv2.BORDER_CONSTANT),
+                scale_limit=[-0.6, 0.2]
+            ),
             A.MotionBlur(),
             A.GaussNoise(),
             A.ColorJitter(),

@@ -1,5 +1,5 @@
 common:
-  batch_size: 64
+  batch_size: 128
   image_size: [256, 256]
   is_restore: False
   restore_ind: ""
@@ -7,7 +7,7 @@ common:
   preview_batch: 10000
 
 trainer:
-  max_epochs: 500
+  max_epochs: 200
   precision: 32
   val_check_interval: 1.0
   gradient_clip_val: 5
@@ -18,17 +18,20 @@ trainer:
 model:
   name: DocAlignedModel
   backbone:
-    name: ViT
+    name: Backbone
     options:
-      nhead: 4
-      d_model: 64
-      num_layers: 36
-      patch_size: 16
+      name: lcnet_050
+      pretrained: False
+      features_only: True
   head:
-    name: ViTPointRegHead
+    name: ViTBoxPointRegHead
     options:
-      in_channels: 64
+      d_model: 64
+      nhead: 1
+      num_layers: 24
       num_points: 2
+      image_size: 128
+      patch_size: 8
 
 dataset:
   train_options:

@@ -7,7 +7,7 @@ common:
   preview_batch: 10000
 
 trainer:
-  max_epochs: 500
+  max_epochs: 200
   precision: 32
   val_check_interval: 1.0
   gradient_clip_val: 5
@@ -18,17 +18,25 @@ trainer:
 model:
   name: DocAlignedModel
   backbone:
-    name: ViT
+    name: Backbone
     options:
-      nhead: 4
-      d_model: 64
-      num_layers: 36
-      patch_size: 16
+      name: lcnet_050
+      pretrained: False
+      features_only: True
+  neck:
+    name: bifpns
+    out_channels: 64
+    n_bifpn: 3
   head:
-    name: ViTPointRegHead
+    name: ViTBoxPointEdgeRegHead
     options:
-      in_channels: 64
-      num_points: 2
+      in_c: 64
+      d_model: 64
+      nhead: 2
+      num_layers: 12
+      num_points: 8
+      image_size: 128
+      patch_size: 8
 
 dataset:
   train_options:

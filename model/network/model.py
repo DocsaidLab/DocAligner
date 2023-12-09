@@ -48,6 +48,7 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
 
         # Setup loss function
         self.loss_fn_edge = DT.WeightedAWingLoss()
+        self.loss_fn_box = nn.SmoothL1Loss(beta=0.1)
         self.loss_fn_point = nn.SmoothL1Loss(beta=0.1)
 
         # for validation
@@ -67,18 +68,28 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
 
         # edge loss
         edge_args = {}
+        box_args = {}
         if len(other_branchs) > 0:
             pred_edges = other_branchs[0].squeeze(1)
-            loss_edge = self.loss_fn_edge(
-                pred_edges, edges, torch.zeros_like(edges))
-            loss += loss_edge
+            loss_edge = self.loss_fn_edge(pred_edges, edges, edge_masks)
+            loss += loss_edge * 0.1
             edge_args.update({
                 'edges': edges,
                 'pred_edges': pred_edges,
             })
 
+            if len(other_branchs) > 1:
+                pred_boxes = other_branchs[1]
+                loss_box = self.loss_fn_box(pred_boxes, boxes)
+                loss += loss_box
+                box_args.update({
+                    'boxes': boxes,
+                    'pred_boxes': pred_boxes,
+                })
+
         if batch_idx % self.preview_batch == 0:
-            self.preview(batch_idx, imgs, polys, pred_polys, **edge_args)
+            self.preview(batch_idx, imgs, polys, pred_polys,
+                         **edge_args, **box_args)
 
         self.log_dict(
             {
@@ -171,7 +182,7 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
         return img_path
 
     def preview(self, batch_idx, imgs, polys, pred_polys, edges=None,
-                pred_edges=None, suffix='train'):
+                pred_edges=None, boxes=None, pred_boxes=None, suffix='train'):
         preview_dir = self.preview_dir / f'{suffix}_batch_{batch_idx}'
         if not preview_dir.exists():
             preview_dir.mkdir(parents=True)
@@ -182,9 +193,13 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
             if edges is not None else [None] * len(imgs)
         pred_edges = pred_edges.detach().cpu().numpy() \
             if pred_edges is not None else [None] * len(imgs)
+        boxes = boxes.detach().cpu().numpy() \
+            if boxes is not None else [None] * len(imgs)
+        pred_boxes = pred_boxes.detach().cpu().numpy() \
+            if pred_boxes is not None else [None] * len(imgs)
 
-        for idx, (img, poly, pred_poly, edge, pred_edge) in \
-                enumerate(zip(imgs, polys, pred_polys, edges, pred_edges)):
+        for idx, (img, poly, pred_poly, edge, pred_edge, box, pres_box) in \
+                enumerate(zip(imgs, polys, pred_polys, edges, pred_edges, boxes, pred_boxes)):
             img = np.uint8(np.transpose(img, (1, 2, 0)) * 255)
             poly = D.Polygon(poly, normalized=True).denormalize(
                 *img.shape[:2][::-1])
@@ -192,9 +207,9 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
                 *img.shape[:2][::-1])
 
             img1 = D.draw_polygon(
-                img.copy(), poly, color=(0, 255, 255), thickness=2)
+                img.copy(), poly, color=(0, 255, 0), thickness=2)
             img2 = D.draw_polygon(
-                img.copy(), pred_poly, color=(255, 0, 255), thickness=2)
+                img.copy(), pred_poly, color=(0, 0, 255), thickness=2)
             img_output = np.concatenate([img1, img2], axis=1)
 
             if edge is not None and pred_edge is not None:
@@ -203,6 +218,18 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
                 img_edge = np.concatenate([edge, pred_edge], axis=1)
                 img_edge = D.imresize(img_edge, (None, img_output.shape[1]))
                 img_output = np.concatenate([img_output, img_edge], axis=0)
+
+            if box is not None and pres_box is not None:
+                box = D.Box(box, box_mode='XYWH', normalized=True) \
+                    .denormalize(*img.shape[:2][::-1])
+                pres_box = D.Box(pres_box, box_mode='XYWH', normalized=True) \
+                    .denormalize(*img.shape[:2][::-1])
+                img_box = D.draw_box(img.copy(), box, color=(0, 255, 0))
+                img_pres_box = D.draw_box(
+                    img.copy(), pres_box, color=(0, 0, 255))
+                img_box = np.concatenate([img_box, img_pres_box], axis=1)
+                img_box = D.imresize(img_box, (None, img_output.shape[1]))
+                img_output = np.concatenate([img_output, img_box], axis=0)
 
             img_output_name = str(preview_dir / f'{idx}.jpg')
             D.imwrite(img_output, img_output_name)
