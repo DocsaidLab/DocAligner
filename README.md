@@ -116,7 +116,7 @@ D.imwrite(D.draw_polygon(img, poly, thickness=5), 'smartdoc_test_img.jpg')
 ```
 
 <div align="center">
-    <img src="./docs/smartdoc_test_img.jpg" width="300">
+    <img src="./docs/smartdoc_test_img.jpg" width="500">
 </div>
 
 ### 2. MIDV-500 Dataset
