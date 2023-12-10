@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, List
 
+import cv2
 import docsaidkit as D
 import docsaidkit.torch as DT
 import lightning as L
@@ -8,6 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from shapely.geometry import Polygon as _Polygon
 from tabulate import tabulate
 
 from .component import *
@@ -159,19 +161,22 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
         self.log('val_iou', mask_ious.mean(), sync_dist=True)
         self.validation_step_outputs.clear()
 
-    def mask_iou(self, pred_poly, gt_poly):
-        h, w = self.cfg.common.image_size
-        pred_poly = pred_poly.detach().cpu().numpy()
-        gt_poly = gt_poly.detach().cpu().numpy()
-        pred_poly = D.Polygon(pred_poly, normalized=True).denormalize(h, w)
-        gt_poly = D.Polygon(gt_poly, normalized=True).denormalize(h, w)
-        pred_mask = D.draw_polygon(
-            np.zeros((h, w), dtype=np.uint8), pred_poly, color=1, fillup=True)
-        gt_mask = D.draw_polygon(
-            np.zeros((h, w), dtype=np.uint8), gt_poly, color=1, fillup=True)
-        intersection = np.logical_and(pred_mask, gt_mask).sum()
-        union = np.logical_or(pred_mask, gt_mask).sum()
-        return intersection / union
+    def mask_iou(self, pred_poly: D.Polygon, gt_poly: D.Polygon,
+                 is_torch: bool = True, normalized: bool = True):
+
+        if self.training:
+            height, width = self.cfg.common.image_size
+        else:
+            # 設定 SmartDoc 資料集影像的尺寸
+            height, width = 2970, 2100
+
+        if is_torch:
+            pred_poly = pred_poly.detach().cpu().numpy()
+            gt_poly = gt_poly.detach().cpu().numpy()
+            pred_poly = D.Polygon(pred_poly, normalized=True)
+            gt_poly = D.Polygon(gt_poly, normalized=True)
+
+        return D.jaccard_index(pred_poly, gt_poly, (height, width), normalized=normalized)
 
     @ property
     def preview_dir(self):
@@ -206,6 +211,9 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
             pred_poly = D.Polygon(pred_poly, normalized=True).denormalize(
                 *img.shape[:2][::-1])
 
+            iou = self.mask_iou(
+                pred_poly, poly, is_torch=False, normalized=False)
+
             img1 = D.draw_polygon(
                 img.copy(), poly, color=(0, 255, 0), thickness=2)
             img2 = D.draw_polygon(
@@ -231,5 +239,5 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
                 img_box = D.imresize(img_box, (None, img_output.shape[1]))
                 img_output = np.concatenate([img_output, img_box], axis=0)
 
-            img_output_name = str(preview_dir / f'{idx}.jpg')
+            img_output_name = str(preview_dir / f'{idx}_{iou:.4f}.jpg')
             D.imwrite(img_output, img_output_name)

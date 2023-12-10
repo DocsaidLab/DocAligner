@@ -166,14 +166,19 @@ class CordDataset(BaseDataset):
 
 class SmartDocDataset(BaseDataset):
 
-    def __init__(self, return_tensor: bool = False, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, mode: str = 'train', return_tensor: bool = False, *args, **kwargs) -> None:
         self.return_tensor = return_tensor
+        self.mode = mode
+        super().__init__(*args, **kwargs)
 
     def _build(self):
         ds = D.load_json(DIR.parent / 'data' / 'smartdoc2015_dataset.json')
         dataset = []
         for key, data in D.Tqdm(ds.items()):
+            if self.mode == 'train':
+                data = data[:int(len(data) * 0.2)]
+            elif self.mode == 'val':
+                data = data[int(len(data) * 0.2):]
             for d in data:
                 img_path = d['img_path']
                 gt = D.load_json(d['gt_path'])
@@ -203,7 +208,10 @@ class SmartDocDataset(BaseDataset):
                 w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
             img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
 
-        return img, poly, key
+        if self.mode == 'val':
+            return img, poly, key
+
+        return img, poly
 
 
 class SyncDataset(BaseDataset):
@@ -214,6 +222,7 @@ class SyncDataset(BaseDataset):
         use_midv2019: bool = True,
         use_midv2020: bool = True,
         use_cordv0: bool = True,
+        use_smartdoc: bool = True,
         *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -232,6 +241,9 @@ class SyncDataset(BaseDataset):
         if use_cordv0:
             self.cord = CordDataset(**kwargs)
             target_dataset.append('cord')
+        if use_smartdoc:
+            self.smartdoc = SmartDocDataset(**kwargs)
+            target_dataset.append('smartdoc')
 
         self.pool = D.get_files(
             DIR.parent / 'data' / 'docpool', suffix=['.jpg'])
@@ -256,6 +268,8 @@ class SyncDataset(BaseDataset):
             return D.imwarp_quadrangle(*self.midv2019[np.random.randint(len(self.midv2019))])
         elif tgt == 'midv2020':
             return D.imwarp_quadrangle(*self.midv2020[np.random.randint(len(self.midv2020))])
+        elif tgt == 'smartdoc':
+            return D.imwarp_quadrangle(*self.smartdoc[np.random.randint(len(self.smartdoc))])
         else:
             return D.imread(self.pool[np.random.randint(len(self.pool))])
 
@@ -305,6 +319,8 @@ class SyncDataset(BaseDataset):
                 tgts.append('midv2019')
             if hasattr(self, 'midv2020'):
                 tgts.append('midv2020')
+            if hasattr(self, 'smartdoc'):
+                tgts.append('smartdoc')
 
             tgt = np.random.choice(tgts)
             if tgt == 'midv500':
@@ -316,6 +332,9 @@ class SyncDataset(BaseDataset):
             elif tgt == 'midv2020':
                 img, poly = self.midv2020[
                     np.random.randint(len(self.midv2020))]
+            elif tgt == 'smartdoc':
+                img, poly = self.smartdoc[
+                    np.random.randint(len(self.smartdoc))]
 
             poly = D.Polygon(poly).normalize(
                 img.shape[1], img.shape[0]).numpy()
@@ -341,8 +360,8 @@ class DocAlignedDataset:
         aug_ratio: float = 0.0,
         length_of_dataset: int = 100000,
         fuse_dataset: List[str] = [
-            'midv500', 'midv2019', 'midv2020', 'cord', 'sync'],
-        fuse_ratio: List[float] = [0.2, 0.2, 0.2, 0.1, 0.3],
+            'midv500', 'midv2019', 'midv2020', 'cord', 'sync', 'smartdoc'],
+        fuse_ratio: List[float] = [0.2, 0.2, 0.1, 0.1, 0.3, 0.1],
         edge_width: int = 3,
         output_tensor: bool = True,
     ) -> None:
@@ -362,7 +381,7 @@ class DocAlignedDataset:
 
         dataset = []
         for d in fuse_dataset:
-            if d not in ['midv500', 'midv2019', 'midv2020', 'cord', 'sync']:
+            if d not in ['midv500', 'midv2019', 'midv2020', 'cord', 'sync', 'smartdoc']:
                 raise ValueError(f'Unknown dataset: {d}')
             if d == 'midv500':
                 dataset.append(MIDV500Dataset(**ds_settings))
@@ -374,6 +393,8 @@ class DocAlignedDataset:
                 dataset.append(CordDataset(**ds_settings))
             if d == 'sync':
                 dataset.append(SyncDataset(**ds_settings))
+            if d == 'smartdoc':
+                dataset.append(SmartDocDataset(mode='train', **ds_settings))
         self.dataset = dataset
 
     def __len__(self) -> int:

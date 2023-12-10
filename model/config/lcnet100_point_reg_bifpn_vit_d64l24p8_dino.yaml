@@ -1,8 +1,8 @@
 common:
   batch_size: 64
   image_size: [256, 256]
-  is_restore: False
-  restore_ind: ""
+  is_restore: True
+  restore_ind: "2023-12-10 04:35:47"
   restore_ckpt: ""
   preview_batch: 10000
 
@@ -20,8 +20,8 @@ model:
   backbone:
     name: Backbone
     options:
-      name: lcnet_050
-      pretrained: False
+      name: lcnet_100
+      pretrained: True
       features_only: True
   neck:
     name: bifpns
@@ -33,7 +33,7 @@ model:
       in_c: 64
       d_model: 64
       nhead: 2
-      num_layers: 12
+      num_layers: 24
       num_points: 8
       image_size: 128
       patch_size: 8
@@ -51,12 +51,14 @@ dataset:
         - midv2020
         - cord
         - sync
-      fuse_ratio: [0.2, 0.2, 0.2, 0.05, 0.35]
+        - smartdoc
+      fuse_ratio: [0.2, 0.2, 0.1, 0.05, 0.35, 0.1]
       length_of_dataset: 160000
   valid_options:
     name: SmartDocDataset
     options:
       root: /data/Dataset
+      mode: val
       image_size: [256, 256]
       return_tensor: True
 
@@ -76,7 +78,7 @@ dataloader:
 optimizer:
   name: AdamW
   options:
-    lr: 1.0e-4
+    lr: 1.0e-5
     betas: [0.9, 0.999]
     weight_decay: 0.1
     amsgrad: False
