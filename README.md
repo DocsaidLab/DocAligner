@@ -1,5 +1,3 @@
-**[English](README.md)** | **[中文](./docs/README.md)**
-
 # DocAligned
 
 <p align="left">
@@ -15,6 +13,7 @@ This project is a visual system focused on the localization of documents in the 
 ## Table of Contents
 - [Introduction](#introduction)
 - [Table of Contents](#table-of-contents)
+- [Model Architecture](#model-architecture)
 - [Dataset](#dataset)
 - [Dataset Preprocessing](#dataset-preprocessing)
 - [Dataset Implementation](#dataset-implementation)
@@ -27,6 +26,13 @@ This project is a visual system focused on the localization of documents in the 
     - [7. Image Augmentation](#7-image-augmentation)
 - [Building the Training Environment](#building-the-training-environment)
 - [Running Training (Based on Docker)](#running-training-based-on-docker)
+- [Reference](#reference)
+
+## Model Architecture
+
+<div align="center">
+    <img src="./docs/model_architecture.png" width="800">
+</div>
 
 ## Dataset
 
@@ -363,3 +369,25 @@ bash DocAligned/docker/train.bash LC150_BIFPN64_D3_PointReg_r256 # Replace with 
 - Note: For configuration file details, refer to [DocAligned/model/README.md](./model/README.md).
 
 By following these steps, you can safely execute document alignment training tasks within a Docker container, leveraging Docker's isolated environment for consistency and reproducibility. This approach makes project deployment and scaling more convenient and flexible.
+
+
+## Reference
+
+- **Model Architecture**
+    - [PP-LCNet: A Lightweight CPU Convolutional Neural Network](https://arxiv.org/abs/2109.15099)
+    - [EfficientDet: Scalable and Efficient Object Detection](https://arxiv.org/abs/1911.09070v7)
+    - [Adaptive Wing Loss for Robust Face Alignment via Heatmap Regression](https://arxiv.org/abs/1904.07399)
+    - [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929v2)
+
+- **Dataset**
+    - [ICDAR2015 Competition on Smartphone Document Capture and OCR (SmartDoc)](https://marcalr.github.io/pdfs/ICDAR15e.pdf)
+    - [CORD: A Consolidated Receipt Dataset for Post-OCR Parsing](https://openreview.net/forum?id=SJl3z659UH)
+    - [MIDV-500: A Dataset for Identity Documents Analysis and Recognition on Mobile Devices in Video Stream](https://arxiv.org/abs/1807.05786)
+    - [MIDV-2019: Challenges of the modern mobile-based document OCR](https://arxiv.org/abs/1910.04009)
+    - [MIDV-2020: A Comprehensive Benchmark Dataset for Identity Document Analysis](https://arxiv.org/abs/2107.00396)
+
+- **Research in the same field**
+    - [ICDAR2015 Competition on Smartphone Document Capture and OCR (SmartDoc)](https://marcalr.github.io/pdfs/ICDAR15e.pdf)
+    - [Real-time Document Localization in Natural Images by Recursive Application of a CNN](https://khurramjaved.com/RecursiveCNN.pdf)
+    - [HU-PageScan: a fully convolutional neural network for document page crop](https://ietresearch.onlinelibrary.wiley.com/doi/full/10.1049/iet-ipr.2020.0532)
+    - [LDRNet: Enabling Real-time Document Localization on Mobile Devices](https://arxiv.org/abs/2206.02136)
