@@ -161,22 +161,22 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
         self.log('val_iou', mask_ious.mean(), sync_dist=True)
         self.validation_step_outputs.clear()
 
-    def mask_iou(self, pred_poly: D.Polygon, gt_poly: D.Polygon,
-                 is_torch: bool = True, normalized: bool = True):
-
-        if self.training:
-            height, width = self.cfg.common.image_size
-        else:
-            # 設定 SmartDoc 資料集影像的尺寸
-            height, width = 2970, 2100
-
+    def mask_iou(self, pred_poly: D.Polygon, gt_poly: D.Polygon, is_torch: bool = True):
         if is_torch:
+            height, width = self.cfg.common.image_size
             pred_poly = pred_poly.detach().cpu().numpy()
             gt_poly = gt_poly.detach().cpu().numpy()
-            pred_poly = D.Polygon(pred_poly, normalized=True)
-            gt_poly = D.Polygon(gt_poly, normalized=True)
+            pred_poly = D.Polygon(pred_poly, normalized=True) \
+                .denormalize(width, height)
+            gt_poly = D.Polygon(gt_poly, normalized=True) \
+                .denormalize(width, height)
 
-        return D.jaccard_index(pred_poly, gt_poly, (height, width), normalized=normalized)
+        if self.training:
+            return D.polygon_iou(pred_poly, gt_poly)
+        else:
+            # 設定 SmartDoc 資料集影像的尺寸
+            doc_h, doc_w = 2970, 2100
+            return D.jaccard_index(pred_poly.numpy(), gt_poly.numpy(), (doc_h, doc_w))
 
     @ property
     def preview_dir(self):
@@ -211,8 +211,7 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
             pred_poly = D.Polygon(pred_poly, normalized=True).denormalize(
                 *img.shape[:2][::-1])
 
-            iou = self.mask_iou(
-                pred_poly, poly, is_torch=False, normalized=False)
+            iou = self.mask_iou(pred_poly, poly, is_torch=False)
 
             img1 = D.draw_polygon(
                 img.copy(), poly, color=(0, 255, 0), thickness=2)

@@ -1,9 +1,9 @@
 common:
   batch_size: 64
   image_size: [256, 256]
-  is_restore: False
-  restore_ind: ""
-  restore_ckpt: ""
+  is_restore: True
+  restore_ind: "2023-12-10 12:15:08"
+  restore_ckpt: "epoch=6-step=17500.ckpt"
   preview_batch: 10000
 
 trainer:
@@ -52,7 +52,7 @@ dataset:
         - cord
         - sync
         - smartdoc
-      fuse_ratio: [0.2, 0.2, 0.1, 0.05, 0.35, 0.1]
+      fuse_ratio: [0.1, 0.1, 0.1, 0.05, 0.45, 0.2]
       length_of_dataset: 160000
   valid_options:
     name: SmartDocDataset
@@ -78,7 +78,7 @@ dataloader:
 optimizer:
   name: AdamW
   options:
-    lr: 1.0e-4
+    lr: 1.0e-5
     betas: [0.9, 0.999]
     weight_decay: 0.1
     amsgrad: False
