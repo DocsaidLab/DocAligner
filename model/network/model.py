@@ -89,6 +89,13 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
                     'pred_boxes': pred_boxes,
                 })
 
+            if len(other_branchs) > 2:
+                aux_points = other_branchs[2]
+                aux_points = aux_points.reshape(-1, 4, 2)
+                aux_boxes = other_branchs[3]
+                loss += self.loss_fn_point(aux_points, polys) + \
+                    self.loss_fn_box(aux_boxes, boxes)
+
         if batch_idx % self.preview_batch == 0:
             self.preview(batch_idx, imgs, polys, pred_polys,
                          **edge_args, **box_args)

@@ -1,13 +1,13 @@
 common:
   batch_size: 64
   image_size: [256, 256]
-  is_restore: True
-  restore_ind: "2023-12-10 12:15:08"
-  restore_ckpt: "epoch=6-step=17500.ckpt"
+  is_restore: False
+  restore_ind: ""
+  restore_ckpt: ""
   preview_batch: 10000
 
 trainer:
-  max_epochs: 200
+  max_epochs: 50
   precision: 32
   val_check_interval: 1.0
   gradient_clip_val: 5
@@ -23,6 +23,7 @@ model:
       name: lcnet_050
       pretrained: True
       features_only: True
+      replace_components: True
   neck:
     name: bifpns
     out_channels: 64
@@ -32,11 +33,38 @@ model:
     options:
       in_c: 64
       d_model: 64
-      nhead: 2
+      nhead: 4
       num_layers: 12
       num_points: 8
       image_size: 128
       patch_size: 8
+
+onnx:
+  input_shape:
+    img:
+      shape: [1, 3, 256, 256]
+      dtype: float32
+  input_names: ['img']
+  output_names: ['output']
+  dynamic_axes:
+    img:
+      '0': batch_size
+    output:
+      '0': batch_size
+  options:
+    opset_version: 16
+    verbose: False
+    do_constant_folding: True
+
+quantize:
+  do_quant: True
+  device: mobile
+  options:
+    quant_format: QOperator
+    per_channel: True
+    reduce_range: True
+    optimize_model: True
+    nodes_to_exclude: ["/Split", "/act/Sigmoid"]
 
 dataset:
   train_options:
@@ -52,7 +80,7 @@ dataset:
         - cord
         - sync
         - smartdoc
-      fuse_ratio: [0.1, 0.1, 0.1, 0.05, 0.45, 0.2]
+      fuse_ratio: [0.1, 0.1, 0.1, 0.05, 0.55, 0.1]
       length_of_dataset: 160000
   valid_options:
     name: SmartDocDataset
@@ -74,21 +102,19 @@ dataloader:
     shuffle: False
     drop_last: False
 
-
 optimizer:
   name: AdamW
   options:
-    lr: 1.0e-5
+    lr: 1.0e-4
     betas: [0.9, 0.999]
     weight_decay: 0.1
     amsgrad: False
 
 lr_scheduler:
-  name: MultiStepLRWarmUp
+  name: PolynomialLRWarmup
   options:
-    warmup_milestone: 1000
-    milestones: [50000, 100000]
-    gamma: 0.316227766
+    warmup_iters: 12500
+    total_iters: 125000
   pl_options:
     monitor: loss
     interval: step

@@ -377,13 +377,15 @@ class ViTBoxPointEdgeRegHead(nn.Module):
             image_size=image_size,
             patch_size=patch_size,
             in_c=in_c,
+            nhead=nhead,
         )
         self.cls_token = DT.ImageEncoder(
             in_c=in_c,
             d_model=d_model,
-            num_layers=6,
+            num_layers=num_layers,
             image_size=8,
             patch_size=1,
+            nhead=nhead,
         )
         self.point_reg = nn.Linear(d_model, num_points)
         self.box_reg = nn.Linear(d_model, 4)
@@ -398,4 +400,6 @@ class ViTBoxPointEdgeRegHead(nn.Module):
         points = self.point_reg(hid)
         boxes = self.box_reg(hid)
         edges = self.edge_reg(xs[0])
-        return points, edges, boxes
+        aux_points = self.point_reg(cls_token)
+        aux_boxes = self.box_reg(cls_token)
+        return points, edges, boxes, aux_points, aux_boxes
