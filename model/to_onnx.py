@@ -24,6 +24,18 @@ class Identity(nn.Module):
         return self.model(x)
 
 
+class WarpLC100FPN(nn.Module):
+
+    def __init__(self, model: L.LightningModule):
+        super().__init__()
+        self.backbone = model.backbone
+        self.neck = model.neck
+        self.head = model.head
+
+    def forward(self, img: torch.Tensor):
+        return self.head(self.neck(self.backbone(img)))
+
+
 class WarpDetection(nn.Module):
 
     def __init__(self, model: L.LightningModule):
@@ -85,7 +97,9 @@ def main_docaligned_torch2onnx(cfg_name: Union[str, Path]):
     model, cfg = DT.load_model_from_config(
         cfg_name, root=DIR, stem='config', network=net)
     model = model.eval().cpu()
-    warp_model = WarpDetection(model)
+
+    warp_model_name = cfg.onnx.pop('name')
+    warp_model = globals()[warp_model_name](model)
     dummy_input = input_constructor(tuple(cfg.onnx.input_shape.items()))
 
     if dynamic_axes := getattr(cfg.onnx, "dynamic_axes", None):

@@ -2,7 +2,20 @@
 
 cat > benchmark.py <<EOF
 from fire import Fire
-from DocAligned.benchmark import benchmark_smartdoc
+
+def main(task):
+    if task == 'smartdoc':
+        from DocAligned.benchmark import benchmark_smartdoc
+        benchmark_smartdoc.main()
+    elif task == 'idcard':
+        from DocAligned.benchmark import benchmark_idcard
+        benchmark_idcard.main()
+
+    else:
+        print("Invalid task. Please specify 'smartdoc' or 'idcard'.")
+
+if __name__ == "__main__":
+    Fire(main)
 EOF
 
 docker run \
@@ -13,4 +26,4 @@ docker run \
     -v $PWD/DocAligned:/code/DocAligned \
     -v $PWD/benchmark.py:/code/benchmark.py \
     -v /data/Dataset:/data/Dataset \
-    -it --rm doc_align_train python benchmark.py
+    -it --rm doc_align_train python benchmark.py $1

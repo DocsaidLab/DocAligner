@@ -33,10 +33,10 @@ def preprocess(
 
     if return_tensor:
         img = np.transpose(img, axes=(2, 0, 1)).astype('float32')
-        img = img[None]
+        img = img[None] / 255
 
     return {
-        'input': {'input': img},
+        'input': {'img': img},
         'img_size_ori': (nh, nw),
         'img_size_infer': img_size_infer,
         'return_tensor': return_tensor,
@@ -44,30 +44,16 @@ def preprocess(
     }
 
 
-def postprocess(preds, imgs_size, heatmap_threshold: float = 0.3):
-
-    def _get_point_with_max_area(mask):
-        polygons = D.Polygons.from_image(mask).drop_empty()
-        if len(polygons) > 0:
-            polygons = polygons[polygons.area == polygons.area.max()]
-        return polygons.centroid.flatten().tolist()
-
-    polygon = []
-    for ii, pred in enumerate(preds[0]):
-        pred = D.imresize(pred, size=imgs_size)
-        pred[pred < heatmap_threshold] = 0
-        pred = np.uint8(np.clip(pred*255, 0, 255))
-        point = _get_point_with_max_area(pred)
-        if len(point) == 2 and ii < 4:
-            polygon.append(point)
-
+def postprocess(preds, imgs_size):
+    preds = preds.reshape(4, 2)
+    polygon = preds * np.array(imgs_size[::-1])
     return polygon
 
 
 class Inference:
 
     default_model_path = \
-        str(DIR / 'ckpt' / 'lc100_bifpn_heatmap_reg_fp32.onnx')
+        str(DIR / 'ckpt' / 'lcnet100_point_reg_bifpn_20231214_fp32.onnx')
 
     def __init__(
         self,
@@ -75,7 +61,7 @@ class Inference:
         backend: D.Backend = D.Backend.cpu,
         model_path: str = default_model_path
     ):
-        self.img_size_infer = (192, 192)
+        self.img_size_infer = (256, 256)
         self.model = D.ONNXEngine(model_path, gpu_id=gpu_id, backend=backend)
 
     def __call__(
