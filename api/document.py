@@ -6,7 +6,7 @@ import cv2
 import docsaidkit as D
 import numpy as np
 
-__all__ = ['Card']
+__all__ = ['Document']
 
 
 def calc_angle(v1, v2):

@@ -6,7 +6,7 @@ import numpy as np
 from .document import Document
 from .heatmap_rec import Inference as HeatmapRegInference
 
-DIR = D.get_curdir(__file__)
+__all__ = ['DocAligned', 'ModelType']
 
 
 class ModelType(D.EnumCheckMixin, Enum):
