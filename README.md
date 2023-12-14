@@ -13,7 +13,6 @@ This project is a visual system focused on the localization of documents in the 
 ## Table of Contents
 - [Introduction](#introduction)
 - [Table of Contents](#table-of-contents)
-- [Model Architecture](#model-architecture)
 - [Dataset](#dataset)
 - [Dataset Preprocessing](#dataset-preprocessing)
 - [Dataset Implementation](#dataset-implementation)
@@ -27,12 +26,6 @@ This project is a visual system focused on the localization of documents in the 
 - [Building the Training Environment](#building-the-training-environment)
 - [Running Training (Based on Docker)](#running-training-based-on-docker)
 - [Reference](#reference)
-
-## Model Architecture
-
-<div align="center">
-    <img src="./docs/model_architecture.png" width="800">
-</div>
 
 ## Dataset
 
