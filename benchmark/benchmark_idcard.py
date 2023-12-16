@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from tabulate import tabulate
 
-from ..api import DocAligner, ModelType
+from ..docaligner import DocAligner, ModelType
 
 DIR = D.get_curdir(__file__)
 

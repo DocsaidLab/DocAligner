@@ -2,7 +2,7 @@ import docsaidkit as D
 import pandas as pd
 from tabulate import tabulate
 
-from ..api import DocAligner, ModelType
+from ..docaligner import DocAligner, ModelType
 from ..model.dataset import SmartDocDataset
 
 
