@@ -20,7 +20,7 @@ model:
   backbone:
     name: Backbone
     options:
-      name: lcnet_100
+      name: lcnet_050
       pretrained: True
       features_only: True
       replace_components: True
@@ -29,13 +29,18 @@ model:
     out_channels: 64
     n_bifpn: 3
   head:
-    name: PointRegHead
+    name: BoxPointEdgeDecoderAuxHead
     options:
       in_c: 64
-      n_points: 8
+      d_model: 64
+      nhead: 2
+      num_layers: 6
+      num_points: 8
+      image_size: 128
+      patch_size: 8
 
 onnx:
-  name: WarpLC100FPN
+  name: WarpLC50FPNDecoder
   input_shape:
     img:
       shape: [1, 3, 256, 256]

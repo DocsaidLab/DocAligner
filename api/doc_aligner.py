@@ -3,7 +3,6 @@ from enum import Enum
 import docsaidkit as D
 import numpy as np
 
-from .document import Document
 from .heatmap_rec import Inference as HeatmapRegInference
 from .point_rec import Inference as PointRecInference
 
@@ -11,8 +10,8 @@ __all__ = ['DocAligner', 'ModelType']
 
 
 class ModelType(D.EnumCheckMixin, Enum):
-    HeatmapBased = 1
-    PointBased = 2
+    heatmap = 1
+    point = 2
 
 
 class DocAligner:
@@ -21,17 +20,17 @@ class DocAligner:
         self,
         gpu_id: int = 0,
         backend: D.Backend = D.Backend.cpu,
-        model_type: ModelType = ModelType.PointBased,
+        model_type: ModelType = ModelType.point,
         **kwargs
     ):
         model_type = ModelType.obj_to_enum(model_type)
-        if model_type == ModelType.HeatmapBased:
+        if model_type == ModelType.heatmap:
             self.detector = HeatmapRegInference(
                 gpu_id=gpu_id,
                 backend=backend,
                 **kwargs
             )
-        elif model_type == ModelType.PointBased:
+        elif model_type == ModelType.point:
             self.detector = PointRecInference(
                 gpu_id=gpu_id,
                 backend=backend,
@@ -40,7 +39,7 @@ class DocAligner:
 
     def __call__(self, img: np.ndarray, do_center_crop: bool = False):
         polygon = self.detector(img, do_center_crop)
-        return Document(**{
+        return D.Document(**{
             'image': img,
-            'polygon': polygon,
+            'doc_polygon': polygon,
         })

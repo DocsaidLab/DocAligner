@@ -8,13 +8,13 @@ from ..model.dataset import SmartDocDataset
 
 def main():
 
-    model = DocAligner(model_type=ModelType.HeatmapBased)
+    model = DocAligner(model_type=ModelType.heatmap)
     dataset = SmartDocDataset(root='/data/Dataset', mode='val')
 
     doc_types, mask_ious = [], []
     for i in D.Tqdm(range(len(dataset))):
         img, poly, key = dataset[i]
-        pred_poly = model(img).polygon
+        pred_poly = model(img).doc_polygon
         if len(pred_poly) == 4:
             poly = D.order_points_clockwise(poly)
             pred_poly = D.order_points_clockwise(pred_poly)

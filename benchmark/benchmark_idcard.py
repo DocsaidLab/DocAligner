@@ -22,7 +22,7 @@ TARG_IDCard_DATA_FOLDER = [
 
 def main():
 
-    model = DocAligner(model_type=ModelType.PointBased)
+    model = DocAligner(model_type=ModelType.point)
     env_scores = []
     for env_name in TARG_IDCard_DATA_FOLDER:
         gts = D.PowerDict.load_json(DATA_DIR / env_name / f'{env_name}.json')
@@ -30,7 +30,7 @@ def main():
         for _, gt in D.Tqdm(gts.items()):
             img = D.imread(DATA_DIR / env_name / gt.imagePath)
             poly = np.array(gt.polygons)
-            pred_poly = model(img, do_center_crop=True).polygon
+            pred_poly = model(img, do_center_crop=True).doc_polygon
             if len(pred_poly) == 4:
                 poly = D.order_points_clockwise(poly)
                 pred_poly = D.order_points_clockwise(pred_poly)
