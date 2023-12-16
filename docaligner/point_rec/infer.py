@@ -53,7 +53,8 @@ def postprocess(preds, imgs_size):
 class Inference:
 
     default_model_path = \
-        str(DIR / 'ckpt' / 'lcnet100_point_reg_bifpn_20231214_fp32.onnx')
+        str(DIR / 'ckpt' /
+            'lcnet050_point_box_edge_bifpn_two_decoder_aux_20231215_fp32.onnx')
 
     def __init__(
         self,
