@@ -36,7 +36,7 @@ class WarpLC100FPN(nn.Module):
         return self.head(self.neck(self.backbone(img)))
 
 
-class WarpDetection(nn.Module):
+class WarpLC50FPNEncoder(nn.Module):
 
     def __init__(self, model: L.LightningModule):
         super().__init__()
@@ -45,13 +45,32 @@ class WarpDetection(nn.Module):
         self.head_encoder = model.head.encoder
         self.head_cls = model.head.cls_token
         self.head_point_reg = model.head.point_reg
+        self.norm1 = model.head.norm1
+        self.norm2 = model.head.norm2
 
     def forward(self, img: torch.Tensor):
         x = self.backbone(img)
         x = self.neck(x)
         cls_token, *_ = self.head_cls(x[4])
+        cls_token = self.norm1(cls_token)
         hid, *_ = self.head_encoder(x[0], cls_token=cls_token.unsqueeze(1))
+        hid = self.norm2(hid)
         points = self.head_point_reg(hid)
+        return points
+
+
+class WarpLC50FPNDecoder(nn.Module):
+
+    def __init__(self, model: L.LightningModule):
+        super().__init__()
+        self.backbone = model.backbone
+        self.neck = model.neck
+        self.head = model.head
+
+    def forward(self, img: torch.Tensor):
+        x = self.backbone(img)
+        x = self.neck(x)
+        points, *_ = self.head(x)
         return points
 
 
@@ -93,7 +112,7 @@ def convert_numeric_keys(input_dict):
     }
 
 
-def main_docaligned_torch2onnx(cfg_name: Union[str, Path]):
+def main_docaligner_torch2onnx(cfg_name: Union[str, Path]):
     model, cfg = DT.load_model_from_config(
         cfg_name, root=DIR, stem='config', network=net)
     model = model.eval().cpu()

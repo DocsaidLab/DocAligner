@@ -1,1 +1,1 @@
-from .model import DocAlignedModel
+from .model import DocAlignerModel

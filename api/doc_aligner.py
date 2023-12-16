@@ -40,8 +40,6 @@ class DocAligner:
 
     def __call__(self, img: np.ndarray, do_center_crop: bool = False):
         polygon = self.detector(img, do_center_crop)
-
-        
         return Document(**{
             'image': img,
             'polygon': polygon,

@@ -1,8 +1,8 @@
-# DocAligned
+# DocAligner
 
 <p align="left">
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-dfd.svg"></a>
-    <a href="https://github.com/DocsaidLab/DocAligned/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/DocAligned?color=ffa"></a>
+    <a href="https://github.com/DocsaidLab/DocAligner/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/DocAligner?color=ffa"></a>
     <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
 </p>
 
@@ -68,7 +68,7 @@ This project is a visual system focused on the localization of documents in the 
       After installation, execute `download_midv.py`.
 
       ```bash
-      cd DocAligned/data
+      cd DocAligner/data
       python download_midv.py
       ```
 
@@ -266,10 +266,10 @@ class DefaultImageAug:
 
 ## Building the Training Environment
 
-First, ensure you have built the base image `docsaid_training_base_image` from `DocsaidKit`. If not, refer to `DocsaidKit` documentation. Then, use the following command to build the Docker image for DocAligned work:
+First, ensure you have built the base image `docsaid_training_base_image` from `DocsaidKit`. If not, refer to `DocsaidKit` documentation. Then, use the following command to build the Docker image for DocAligner work:
 
 ```bash
-cd DocAligned
+cd DocAligner
 bash docker/build.bash
 ```
 
@@ -314,7 +314,7 @@ First, examine the contents of the `train.bash` file:
 
 cat > trainer.py <<EOF
 from fire import Fire
-from DocAligned.model import main_docalign_train
+from DocAligner.model import main_docalign_train
 
 if __name__ == '__main__':
     Fire(main_docalign_train)
@@ -327,7 +327,7 @@ docker run \
     --shm-size=64g \
     --ipc=host --net=host \
     --cpuset-cpus="0-31" \
-    -v $PWD/DocAligned:/code/DocAligned \
+    -v $PWD/DocAligner:/code/DocAligner \
     -v $PWD/trainer.py:/code/trainer.py \
     -v /data/Dataset:/data/Dataset \
     -it --rm doc_align_train python trainer.py --cfg_name $1
@@ -347,19 +347,19 @@ Explanation:
    - `--shm-size=64g`: Sets the size of shared memory, useful in large-scale data processing.
    - `--ipc=host --net=host`: These settings allow the container to use the host's IPC namespace and network stack, helping with performance.
    - `--cpuset-cpus="0-31"`: Specifies which CPU cores the container should use.
-   - `-v $PWD/DocAligned:/code/DocAligned` etc.: These are mount parameters, mapping directories from the host to the container for easy access to training data and scripts.
+   - `-v $PWD/DocAligner:/code/DocAligner` etc.: These are mount parameters, mapping directories from the host to the container for easy access to training data and scripts.
    - `--cfg_name $1`: This is an argument passed to `trainer.py`, specifying the name of the configuration file.
 
 3. **Dataset Path**
    - Note that `/data/Dataset` is the path for training data. Adjust `-v /data/Dataset:/data/Dataset` to match your dataset directory.
 
-Finally, return to the `DocAligned` parent directory and execute the following command to start training:
+Finally, return to the `DocAligner` parent directory and execute the following command to start training:
 
 ```bash
-bash DocAligned/docker/train.bash LC150_BIFPN64_D3_PointReg_r256 # Replace with your configuration file name
+bash DocAligner/docker/train.bash LC150_BIFPN64_D3_PointReg_r256 # Replace with your configuration file name
 ```
 
-- Note: For configuration file details, refer to [DocAligned/model/README.md](./model/README.md).
+- Note: For configuration file details, refer to [DocAligner/model/README.md](./model/README.md).
 
 By following these steps, you can safely execute document alignment training tasks within a Docker container, leveraging Docker's isolated environment for consistency and reproducibility. This approach makes project deployment and scaling more convenient and flexible.
 

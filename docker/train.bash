@@ -2,10 +2,10 @@
 
 cat > trainer.py <<EOF
 from fire import Fire
-from DocAligned.model import main_docalign_train
+from DocAligner.model import main_docaligner_train
 
 if __name__ == '__main__':
-    Fire(main_docalign_train)
+    Fire(main_docaligner_train)
 EOF
 
 docker run \
@@ -15,7 +15,7 @@ docker run \
     --shm-size=64g \
     --ipc=host --net=host \
     --cpuset-cpus="0-31" \
-    -v $PWD/DocAligned:/code/DocAligned \
+    -v $PWD/DocAligner:/code/DocAligner \
     -v $PWD/trainer.py:/code/trainer.py \
     -v /data/Dataset:/data/Dataset \
     -it --rm doc_align_train python trainer.py --cfg_name $1

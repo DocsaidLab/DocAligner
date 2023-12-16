@@ -214,6 +214,19 @@ class SmartDocDataset(BaseDataset):
         return img, poly
 
 
+class PrivateDataset(BaseDataset):
+
+    def _build(self):
+        ds = D.load_json(DIR.parent / 'data' / 'private_template' / 'gt.json')
+        dataset = []
+        for data in D.Tqdm(ds):
+            img_path = DIR.parent / 'data' / \
+                'private_template' / data['path']
+            gt = data['polygon']
+            dataset.append((img_path, gt))
+        return dataset
+
+
 class SyncDataset(BaseDataset):
 
     def __init__(
@@ -223,6 +236,7 @@ class SyncDataset(BaseDataset):
         use_midv2020: bool = True,
         use_cordv0: bool = True,
         use_smartdoc: bool = True,
+        use_private: bool = False,
         *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -244,6 +258,9 @@ class SyncDataset(BaseDataset):
         if use_smartdoc:
             self.smartdoc = SmartDocDataset(**kwargs)
             target_dataset.append('smartdoc')
+        if use_private:
+            self.private = PrivateDataset(**kwargs)
+            target_dataset.append('private')
 
         self.pool = D.get_files(
             DIR.parent / 'data' / 'docpool', suffix=['.jpg'])
@@ -270,6 +287,8 @@ class SyncDataset(BaseDataset):
             return D.imwarp_quadrangle(*self.midv2020[np.random.randint(len(self.midv2020))])
         elif tgt == 'smartdoc':
             return D.imwarp_quadrangle(*self.smartdoc[np.random.randint(len(self.smartdoc))])
+        elif tgt == 'private':
+            return D.imwarp_quadrangle(*self.private[np.random.randint(len(self.private))])
         else:
             return D.imread(self.pool[np.random.randint(len(self.pool))])
 
@@ -321,6 +340,8 @@ class SyncDataset(BaseDataset):
                 tgts.append('midv2020')
             if hasattr(self, 'smartdoc'):
                 tgts.append('smartdoc')
+            if hasattr(self, 'private'):
+                tgts.append('private')
 
             tgt = np.random.choice(tgts)
             if tgt == 'midv500':
@@ -335,6 +356,9 @@ class SyncDataset(BaseDataset):
             elif tgt == 'smartdoc':
                 img, poly = self.smartdoc[
                     np.random.randint(len(self.smartdoc))]
+            elif tgt == 'private':
+                img, poly = self.private[
+                    np.random.randint(len(self.private))]
 
             poly = D.Polygon(poly).normalize(
                 img.shape[1], img.shape[0]).numpy()
@@ -349,7 +373,7 @@ class SyncDataset(BaseDataset):
         return sync_img, poly
 
 
-class DocAlignedDataset:
+class DocAlignerDataset:
 
     def __init__(
         self,

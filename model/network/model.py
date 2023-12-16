@@ -15,7 +15,7 @@ from tabulate import tabulate
 from .component import *
 
 
-class DocAlignedModel(DT.BaseMixin, L.LightningModule):
+class DocAlignerModel(DT.BaseMixin, L.LightningModule):
 
     def __init__(self, cfg: Dict[str, Any]):
         super().__init__()
@@ -66,7 +66,11 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
         imgs, boxes, polys, edges, edge_masks = batch
         preds, *other_branchs = self.forward(imgs)
         pred_polys = preds.reshape(-1, 4, 2)
-        loss = self.loss_fn_point(pred_polys, polys)
+
+        loss = self.loss_fn_point(
+            pred_polys * 1000,
+            polys * 1000
+        )
 
         # edge loss
         edge_args = {}
@@ -82,7 +86,10 @@ class DocAlignedModel(DT.BaseMixin, L.LightningModule):
 
             if len(other_branchs) > 1:
                 pred_boxes = other_branchs[1]
-                loss_box = self.loss_fn_box(pred_boxes, boxes)
+                loss_box = self.loss_fn_box(
+                    pred_boxes * 1000,
+                    boxes * 1000
+                )
                 loss += loss_box
                 box_args.update({
                     'boxes': boxes,
