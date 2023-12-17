@@ -223,9 +223,10 @@ class BoxPointEdgeDecoderAuxHead(nn.Module):
             image_size, (tuple, list)) else (image_size, image_size)
 
         nh, nw = (h // patch_size),  (w // patch_size)
+        mh, mw = (h // 16),  (w // 16)
 
         self.pos_emb_low = nn.Parameter(torch.Tensor(nh * nw, 1, d_model))
-        self.pos_emb_high = nn.Parameter(torch.Tensor(8 * 8, 1, d_model))
+        self.pos_emb_high = nn.Parameter(torch.Tensor(mh * mw, 1, d_model))
         self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
         nn.init.kaiming_uniform_(self.pos_emb_low, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.pos_emb_high, a=math.sqrt(5))
@@ -265,22 +266,8 @@ class BoxPointEdgeDecoderAuxHead(nn.Module):
             num_layers=num_layers,
         )
 
-        self.point_reg = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, num_points)
-        )
-
-        self.box_reg = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, 4)
-        )
-
+        self.point_reg = nn.Linear(d_model, num_points)
+        self.box_reg = nn.Linear(d_model, 4)
         self.edge_reg = nn.Sequential(
             nn.Conv2d(d_model, 1, 3, padding=1),
             nn.Sigmoid()
