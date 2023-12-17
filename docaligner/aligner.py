@@ -37,7 +37,7 @@ class DocAligner:
                 **kwargs
             )
 
-    def __call__(self, img: np.ndarray, do_center_crop: bool = False):
+    def __call__(self, img: np.ndarray, do_center_crop: bool = False) -> D.Document:
         polygon = self.detector(img, do_center_crop)
         return D.Document(**{
             'image': img,

@@ -65,12 +65,34 @@ class WarpLC50FPNDecoder(nn.Module):
         super().__init__()
         self.backbone = model.backbone
         self.neck = model.neck
-        self.head = model.head
+        self.tokenizer_high = model.head.tokenizer_high
+        self.tokenizer_low = model.head.tokenizer_low
+        self.pos_emb_high = model.head.pos_emb_high
+        self.pos_emb_low = model.head.pos_emb_low
+        self.cls_token = model.head.cls_token
+        self.decoder_high = model.head.decoder_high
+        self.decoder_low = model.head.decoder_low
+        self.point_reg = model.head.point_reg
+        self.norm1 = model.head.norm1
+        self.norm2 = model.head.norm2
 
     def forward(self, img: torch.Tensor):
-        x = self.backbone(img)
-        x = self.neck(x)
-        points, *_ = self.head(x)
+        xs = self.backbone(img)
+        xs = self.neck(xs)
+
+        h_lavel_feat = self.tokenizer_high(xs[4])
+        pos_emb_high = self.pos_emb_high.expand(-1, h_lavel_feat.size(1), -1)
+        h_lavel_feat = h_lavel_feat + pos_emb_high
+        query = self.cls_token.expand(-1, h_lavel_feat.size(1), -1)
+        query = self.decoder_high(query, h_lavel_feat)
+        query = self.norm1(query)
+        l_level_feat = self.tokenizer_low(xs[0])
+        pos_emb_low = self.pos_emb_low.expand(-1, l_level_feat.size(1), -1)
+        l_level_feat = l_level_feat + pos_emb_low
+        query = self.decoder_low(query, l_level_feat)
+        query = self.norm2(query)
+        points = self.point_reg(query.transpose(0, 1).squeeze(1))
+
         return points
 
 
@@ -152,17 +174,17 @@ def main_docaligner_torch2onnx(cfg_name: Union[str, Path]):
         'InputInfo': repr({k: v for k, v in cfg.onnx.input_shape.items()})
     })
 
-    meta_data.update({
-        'Name': 'OCR_00',
-        'Version': 'V3.0',
-    })
+    # meta_data.update({
+    #     'Name': 'OCR_00',
+    #     'Version': 'V3.0',
+    # })
 
     pprint(meta_data)
 
     D.write_metadata_into_onnx(
         onnx_path=str(export_name) + '.onnx',
         out_path=str(export_name) + '.onnx',
-        drop_old_meta=True,
+        drop_old_meta=False,
         **meta_data
     )
 
