@@ -265,8 +265,22 @@ class BoxPointEdgeDecoderAuxHead(nn.Module):
             num_layers=num_layers,
         )
 
-        self.point_reg = nn.Linear(d_model, num_points)
-        self.box_reg = nn.Linear(d_model, 4)
+        self.point_reg = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, num_points)
+        )
+
+        self.box_reg = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, 4)
+        )
+
         self.edge_reg = nn.Sequential(
             nn.Conv2d(d_model, 1, 3, padding=1),
             nn.Sigmoid()

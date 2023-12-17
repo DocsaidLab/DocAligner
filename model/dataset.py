@@ -166,9 +166,16 @@ class CordDataset(BaseDataset):
 
 class SmartDocDataset(BaseDataset):
 
-    def __init__(self, mode: str = 'train', return_tensor: bool = False, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        mode: str = 'train',
+        return_tensor: bool = False,
+        train_ratio: float = 0.2,
+        *args, **kwargs
+    ) -> None:
         self.return_tensor = return_tensor
         self.mode = mode
+        self.train_ratio = train_ratio
         super().__init__(*args, **kwargs)
 
     def _build(self):
@@ -176,9 +183,9 @@ class SmartDocDataset(BaseDataset):
         dataset = []
         for key, data in D.Tqdm(ds.items()):
             if self.mode == 'train':
-                data = data[:int(len(data) * 0.2)]
+                data = data[:int(len(data) * self.train_ratio)]
             elif self.mode == 'val':
-                data = data[int(len(data) * 0.2):]
+                data = data[int(len(data) * self.train_ratio):]
             for d in data:
                 img_path = d['img_path']
                 gt = D.load_json(d['gt_path'])
@@ -276,13 +283,14 @@ class SyncDataset(BaseDataset):
         return dataset
 
     def _random_get_doc_image(self):
+        # We NOT USE midv2019 for getting doc image, because of the dataset has
+        # a lot of incomplete document.
+
         tgt = np.random.choice(self.target_dataset)
         if tgt == 'cord':
             return D.imwarp_quadrangle(*self.cord[np.random.randint(len(self.cord))])
         elif tgt == 'midv500':
             return D.imwarp_quadrangle(*self.midv500[np.random.randint(len(self.midv500))])
-        elif tgt == 'midv2019':
-            return D.imwarp_quadrangle(*self.midv2019[np.random.randint(len(self.midv2019))])
         elif tgt == 'midv2020':
             return D.imwarp_quadrangle(*self.midv2020[np.random.randint(len(self.midv2020))])
         elif tgt == 'smartdoc':
@@ -330,7 +338,7 @@ class SyncDataset(BaseDataset):
                 return self.__getitem__(idx)
             poly = self._generate_random_quadrant_points()
         else:
-            # Generate doc image on midv dataset.
+            # Generate doc image on other dataset.
             tgts = []
             if hasattr(self, 'midv500'):
                 tgts.append('midv500')
