@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import albumentations as A
 import cv2
@@ -15,21 +15,21 @@ class DefaultImageAug:
 
     def __init__(self, p=0.5):
         self.coarse_drop_aug = DT.CoarseDropout(
-            max_holes=1, max_height=64, max_width=64, p=p)
+            max_holes=1, max_height=64, max_width=64, p=0)
         self.aug = A.Compose([
-            DT.ShiftScaleRotate(
-                shift_limit=0.2,
-                scale_limit=[-0.6, 0.2]
-            ),
-            A.MotionBlur(),
-            A.GaussNoise(),
+            # DT.ShiftScaleRotate(
+            #     shift_limit=0.2,
+            #     scale_limit=[-0.6, 0.2]
+            # ),
+            # A.MotionBlur(),
+            # A.GaussNoise(),
             A.ColorJitter(),
             A.ChannelShuffle(),
             A.HorizontalFlip(),
             A.VerticalFlip(),
             A.RandomRotate90(),
             A.Perspective(),
-            A.GaussianBlur(blur_limit=(7, 11), p=0.5),
+            # A.GaussianBlur(blur_limit=(7, 11), p=0.5),
         ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
@@ -170,7 +170,7 @@ class SmartDocDataset(BaseDataset):
         self,
         mode: str = 'train',
         return_tensor: bool = False,
-        train_ratio: float = 0.2,
+        train_ratio: float = 0.75,
         *args, **kwargs
     ) -> None:
         self.return_tensor = return_tensor
@@ -230,6 +230,8 @@ class PrivateDataset(BaseDataset):
             img_path = DIR.parent / 'data' / \
                 'private_template' / data['path']
             gt = data['polygon']
+            if len(gt) != 4:
+                continue
             dataset.append((img_path, gt))
         return dataset
 
@@ -243,7 +245,7 @@ class SyncDataset(BaseDataset):
         use_midv2020: bool = True,
         use_cordv0: bool = True,
         use_smartdoc: bool = True,
-        use_private: bool = False,
+        use_private: bool = True,
         *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -295,8 +297,6 @@ class SyncDataset(BaseDataset):
             return D.imwarp_quadrangle(*self.midv2020[np.random.randint(len(self.midv2020))])
         elif tgt == 'smartdoc':
             return D.imwarp_quadrangle(*self.smartdoc[np.random.randint(len(self.smartdoc))])
-        elif tgt == 'private':
-            return D.imwarp_quadrangle(*self.private[np.random.randint(len(self.private))])
         else:
             return D.imread(self.pool[np.random.randint(len(self.pool))])
 
@@ -330,7 +330,7 @@ class SyncDataset(BaseDataset):
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
 
         if np.random.rand() < 0.5:
-            # Generate doc image on indoor dataset.
+            # Generate background image from indoor dataset.
             idx = np.random.randint(len(self))
             img_path, _ = self.dataset[idx]
             img = D.imread(img_path)
@@ -338,7 +338,7 @@ class SyncDataset(BaseDataset):
                 return self.__getitem__(idx)
             poly = self._generate_random_quadrant_points()
         else:
-            # Generate doc image on other dataset.
+            # Generate background image from another dataset.
             tgts = []
             if hasattr(self, 'midv500'):
                 tgts.append('midv500')
@@ -385,52 +385,40 @@ class DocAlignerDataset:
 
     def __init__(
         self,
-        root: Union[str, Path] = None,
+        root: Union[str, Path],
         image_size: Tuple[int, int] = (256, 256),
-        interpolation: Union[str, int, INTER] = INTER.BILINEAR,
-        aug_func: Callable = None,
-        aug_ratio: float = 0.0,
-        length_of_dataset: int = 100000,
-        fuse_dataset: List[str] = [
-            'midv500', 'midv2019', 'midv2020', 'cord', 'sync', 'smartdoc'],
-        fuse_ratio: List[float] = [0.2, 0.2, 0.1, 0.1, 0.3, 0.1],
         edge_width: int = 3,
+        aug_ratio: float = 0.0,
+        aug_func: Callable = None,
+        fuse_dataset: List[Dict[str, Any]] = None,
         output_tensor: bool = True,
+        interpolation: Union[str, int, INTER] = INTER.BILINEAR,
     ) -> None:
-        self.fuse_ratio = fuse_ratio
+        self.root = root
         self.edge_width = edge_width
         self.output_tensor = output_tensor
-        self.length_of_dataset = length_of_dataset
-
-        # Dataset settings
-        ds_settings = {
-            'root': root,
-            'image_size': image_size,
-            'interpolation': interpolation,
-            'aug_func': aug_func,
-            'aug_ratio': aug_ratio,
-        }
 
         dataset = []
-        for d in fuse_dataset:
-            if d not in ['midv500', 'midv2019', 'midv2020', 'cord', 'sync', 'smartdoc']:
-                raise ValueError(f'Unknown dataset: {d}')
-            if d == 'midv500':
-                dataset.append(MIDV500Dataset(**ds_settings))
-            if d == 'midv2019':
-                dataset.append(MIDV2019Dataset(**ds_settings))
-            if d == 'midv2020':
-                dataset.append(MIDV2020Dataset(**ds_settings))
-            if d == 'cord':
-                dataset.append(CordDataset(**ds_settings))
-            if d == 'sync':
-                dataset.append(SyncDataset(**ds_settings))
-            if d == 'smartdoc':
-                dataset.append(SmartDocDataset(mode='train', **ds_settings))
+        n_dataset = []
+        for ds in fuse_dataset:
+            name = ds['name']
+            options = ds['options']
+            options.update({
+                'root': root,
+                'image_size': image_size,
+                'interpolation': interpolation,
+                'aug_func': aug_func,
+                'aug_ratio': aug_ratio,
+            })
+            _ds = globals()[name](**options)
+            dataset.append(_ds)
+            n_dataset.append(len(_ds))
+
         self.dataset = dataset
+        self.length_of_dataset = n_dataset
 
     def __len__(self) -> int:
-        return self.length_of_dataset
+        return sum(self.length_of_dataset)
 
     def to_tensor(self, img, box, poly, edge, edge_mask):
         poly = D.Polygon(poly).normalize(
@@ -442,10 +430,18 @@ class DocAlignerDataset:
         edge_mask = edge_mask.astype('float32')
         return img, box, poly, edge, edge_mask
 
+    @staticmethod
+    def _find_position_in_list(lst, target_sum):
+        cumulative_sum = 0
+        for i, value in enumerate(lst):
+            if cumulative_sum + value >= target_sum:
+                inner_index = target_sum - cumulative_sum
+                return (i, inner_index)
+            cumulative_sum += value
+        return None
+
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
-        idx = idx % len(self)
-        d_idx = np.random.choice(len(self.dataset), p=self.fuse_ratio)
-        f_idx = np.random.randint(len(self.dataset[d_idx]))
+        d_idx, f_idx = self._find_position_in_list(self.length_of_dataset, idx)
         img, poly = self.dataset[d_idx][f_idx]
         edge = cv2.fillPoly(
             np.zeros_like(img),

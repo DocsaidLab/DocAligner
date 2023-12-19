@@ -1,5 +1,5 @@
 import math
-from typing import List
+from typing import List, Tuple
 
 import docsaidkit.torch as DT
 import torch
@@ -318,16 +318,18 @@ class BoxPointEdgeDecoderAuxNoFPNHead(nn.Module):
             image_size, (tuple, list)) else (image_size, image_size)
 
         nh, nw = (h // patch_size),  (w // patch_size)
+        mh, mw = (h // 64),  (w // 64)
 
         self.pos_emb_low = nn.Parameter(torch.Tensor(nh * nw, 1, d_model))
-        self.pos_emb_high = nn.Parameter(torch.Tensor(8 * 8, 1, d_model))
+        self.pos_emb_high = nn.Parameter(torch.Tensor(mh * mw, 1, d_model))
         self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
         nn.init.kaiming_uniform_(self.pos_emb_low, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.pos_emb_high, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.cls_token, a=math.sqrt(5))
 
         self.tokenizer_low = nn.Sequential(
-            nn.Conv2d(in_channels_list[0], d_model, patch_size, patch_size),
+            DT.SeparableConvBlock(
+                in_channels_list[0], d_model, patch_size, patch_size),
             nn.Flatten(2),
             DT.Permute([2, 0, 1]),
             nn.LayerNorm(d_model)
@@ -344,7 +346,9 @@ class BoxPointEdgeDecoderAuxNoFPNHead(nn.Module):
         )
 
         self.tokenizer_high = nn.Sequential(
-            nn.Conv2d(in_channels_list[4], d_model, 1, 1, 0),
+            DT.SeparableConvBlock(in_channels_list[4], d_model, 3, 2, 1),
+            nn.BatchNorm2d(d_model),
+            DT.SeparableConvBlock(d_model, d_model, 3, 2, 1),
             nn.Flatten(2),
             DT.Permute([2, 0, 1]),
             nn.LayerNorm(d_model)
@@ -405,3 +409,55 @@ class BoxPointEdgeDecoderAuxNoFPNHead(nn.Module):
         edges = self.edge_reg(xs[0])
 
         return points, edges, boxes, aux_points, aux_boxes
+
+
+class ViTDecoder(nn.Module):
+
+    def __init__(
+        self,
+        d_model: int,
+        num_layers: int,
+        image_size: Tuple[int, int],
+        patch_size: int,
+        num_points: int,
+        in_c: int = 3,
+        **kwargs,
+    ):
+        super().__init__()
+        h, w = image_size if isinstance(
+            image_size, (tuple, list)) else (image_size, image_size)
+        nh, nw = (h // patch_size),  (w // patch_size)
+        self.pos_emb = nn.Parameter(torch.Tensor(nh * nw, 1, d_model))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
+        nn.init.kaiming_uniform_(self.pos_emb, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.cls_token, a=math.sqrt(5))
+
+        self.tokenizer = nn.Sequential(
+            nn.Conv2d(in_c, d_model, patch_size, patch_size),
+            nn.Flatten(2),
+            DT.Permute([2, 0, 1]),
+            nn.LayerNorm(d_model),
+        )
+
+        self.decoder = nn.TransformerDecoder(
+            decoder_layer=nn.TransformerDecoderLayer(
+                d_model=d_model,
+                dim_feedforward=d_model * 2,
+                norm_first=True,
+                dropout=0,
+                **kwargs,
+            ),
+            num_layers=num_layers
+        )
+
+        self.point_reg = nn.Linear(d_model, num_points)
+        self.norm = nn.LayerNorm(d_model)
+
+    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+        x = self.tokenizer(x)
+        query = self.cls_token.expand(-1, x.size(1), -1)
+        x = x + self.pos_emb.expand(-1, x.size(1), -1)
+        x = self.decoder(query, x)
+        x = self.norm(x).transpose(0, 1).squeeze(1)
+        points = self.point_reg(query)
+        return points,

@@ -67,10 +67,7 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
         preds, *other_branchs = self.forward(imgs)
         pred_polys = preds.reshape(-1, 4, 2)
 
-        loss = self.loss_fn_point(
-            pred_polys * 1000,
-            polys * 1000
-        )
+        loss = self.loss_fn_point(pred_polys, polys)
 
         # edge loss
         edge_args = {}
@@ -86,10 +83,7 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
 
             if len(other_branchs) > 1:
                 pred_boxes = other_branchs[1]
-                loss_box = self.loss_fn_box(
-                    pred_boxes * 1000,
-                    boxes * 1000
-                )
+                loss_box = self.loss_fn_box(pred_boxes, boxes)
                 loss += loss_box
                 box_args.update({
                     'boxes': boxes,

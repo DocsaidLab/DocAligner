@@ -1,0 +1,140 @@
+common:
+  batch_size: 64
+  image_size: [224, 224]
+  is_restore: False
+  restore_ind: ""
+  restore_ckpt: ""
+  preview_batch: 10000
+
+global_settings:
+  image_size: [224, 224]
+
+
+trainer:
+  max_epochs: 500
+  precision: 32
+  val_check_interval: 1.0
+  gradient_clip_val: 5
+  accumulate_grad_batches: 1
+  accelerator: gpu
+  devices: [0]
+
+model:
+  name: DocAlignerModel
+  backbone:
+    name: Backbone
+    options:
+      name: mobilenetv2_140
+      pretrained: True
+      features_only: True
+      replace_components: True
+  head:
+    name: BoxPointEdgeDecoderAuxNoFPNHead
+    options:
+      in_c: 64
+      d_model: 64
+      nhead: 2
+      num_layers: 6
+      num_points: 8
+      image_size: 112
+      patch_size: 4
+
+onnx:
+  name: WarpLC50FPNDecoder
+  input_shape:
+    img:
+      shape: [1, 3, 224, 224]
+      dtype: float32
+  input_names: ['img']
+  output_names: ['output']
+  dynamic_axes:
+    img:
+      '0': batch_size
+    output:
+      '0': batch_size
+  options:
+    opset_version: 16
+    verbose: False
+    do_constant_folding: True
+
+quantize:
+  do_quant: False
+  device: mobile
+  options:
+    quant_format: QOperator
+    per_channel: True
+    reduce_range: True
+    optimize_model: True
+    nodes_to_exclude: ["/Split", "/act/Sigmoid"]
+
+dataset:
+  train_options:
+    name: DocAlignerDataset
+    options:
+      root: /data/Dataset
+      aug_ratio: 1
+      fuse_dataset:
+        - name: SmartDocDataset
+          options:
+            root: /data/Dataset
+            mode: train
+            train_ratio: 0.75
+  valid_options:
+    name: SmartDocDataset
+    options:
+      root: /data/Dataset
+      mode: val
+      return_tensor: True
+      train_ratio: 0.75
+
+dataloader:
+  train_options:
+    batch_size: -1
+    num_workers: 16
+    shuffle: False
+    drop_last: False
+  valid_options:
+    batch_size: -1
+    num_workers: 16
+    shuffle: False
+    drop_last: False
+
+optimizer:
+  name: AdamW
+  options:
+    lr: 1.0e-4
+    betas: [0.9, 0.999]
+    weight_decay: 0.1
+    amsgrad: False
+
+lr_scheduler:
+  name: PolynomialLRWarmup
+  options:
+    warmup_iters: 12500
+    total_iters: 125000
+  pl_options:
+    monitor: loss
+    interval: step
+
+callbacks:
+  - name: ModelCheckpoint
+    options:
+      monitor: val_iou
+      mode: max
+      verbose: True
+      save_last: True
+      save_top_k: 5
+  - name: LearningRateMonitor
+    options:
+      logging_interval: step
+  - name: RichModelSummary
+    options:
+      max_depth: 3
+  - name: CustomTQDMProgressBar
+    options:
+      unit_scale: -1
+
+logger:
+  name: TensorBoardLogger
+  options:
+    save_dir: logger
