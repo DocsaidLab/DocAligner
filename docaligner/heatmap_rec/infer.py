@@ -7,8 +7,21 @@ DIR = D.get_curdir(__file__)
 
 __all__ = ['Inference']
 
+configs = {
+    'model1': {
+        'model_path': str(DIR / 'ckpt' / 'lc100_bifpn_heatmap_reg_fp32.onnx'),
+        'img_size_infer': (192, 192),
+        'preprocess': 'preprocess1',
+    },
+    'model2': {
+        'model_path': str(DIR / 'ckpt' / 'lcnet100_heatmap_edge_bifpn_256_20231220_fp32.onnx'),
+        'img_size_infer': (256, 256),
+        'preprocess': 'preprocess2',
+    },
+}
 
-def preprocess(
+
+def preprocess1(
     img: np.ndarray,
     img_size_infer: Tuple[int, int] = None,
     do_center_crop: bool = False,
@@ -44,6 +57,42 @@ def preprocess(
     }
 
 
+def preprocess2(
+    img: np.ndarray,
+    img_size_infer: Tuple[int, int] = None,
+    do_center_crop: bool = False,
+    return_tensor: bool = True,
+):
+    if not D.is_numpy_img(img):
+        raise ValueError("Input image must be numpy array.")
+
+    h, w = img.shape[0:2]
+    center_crop_align = [0, 0]
+
+    if do_center_crop:
+        img = D.centercrop(img)
+        if h > w:
+            center_crop_align = [0, (h - w) // 2]
+        else:
+            center_crop_align = [(w - h) // 2, 0]
+
+    nh, nw = img.shape[0:2]
+    if img_size_infer is not None:
+        img = D.imresize(img, size=img_size_infer)
+
+    if return_tensor:
+        img = np.transpose(img, axes=(2, 0, 1)).astype('float32')
+        img = img[None] / 255.
+
+    return {
+        'input': {'img': img},
+        'img_size_ori': (nh, nw),
+        'img_size_infer': img_size_infer,
+        'return_tensor': return_tensor,
+        'center_crop_align': center_crop_align
+    }
+
+
 def postprocess(preds, imgs_size, heatmap_threshold: float = 0.3):
 
     def _get_point_with_max_area(mask):
@@ -66,24 +115,24 @@ def postprocess(preds, imgs_size, heatmap_threshold: float = 0.3):
 
 class Inference:
 
-    default_model_path = \
-        str(DIR / 'ckpt' / 'lc100_bifpn_heatmap_reg_fp32.onnx')
-
     def __init__(
         self,
         gpu_id: int = 0,
         backend: D.Backend = D.Backend.cpu,
-        model_path: str = default_model_path
+        model_cfg: str = 'model2'
     ):
-        self.img_size_infer = (192, 192)
-        self.model = D.ONNXEngine(model_path, gpu_id=gpu_id, backend=backend)
+        cfg = configs[model_cfg]
+        self.img_size_infer = cfg['img_size_infer']
+        self.preprocess = globals()[cfg['preprocess']]
+        self.model = D.ONNXEngine(
+            cfg['model_path'], gpu_id=gpu_id, backend=backend)
 
     def __call__(
         self,
         img: np.ndarray,
         do_center_crop: bool = False,
     ) -> np.ndarray:
-        img_infos = preprocess(
+        img_infos = self.preprocess(
             img=img,
             img_size_infer=self.img_size_infer,
             do_center_crop=do_center_crop

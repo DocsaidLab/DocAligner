@@ -41,5 +41,5 @@ class DocAligner:
         polygon = self.detector(img, do_center_crop)
         return D.Document(**{
             'image': img,
-            'doc_polygon': polygon,
+            'doc_polygon': polygon if len(polygon) == 4 else None,
         })

@@ -22,7 +22,7 @@ TARG_IDCard_DATA_FOLDER = [
 
 def main():
 
-    model = DocAligner(model_type=ModelType.point)
+    model = DocAligner(model_type=ModelType.heatmap)
     env_scores = []
     for env_name in TARG_IDCard_DATA_FOLDER:
         gts = D.PowerDict.load_json(DATA_DIR / env_name / f'{env_name}.json')
@@ -31,7 +31,7 @@ def main():
             img = D.imread(DATA_DIR / env_name / gt.imagePath)
             poly = np.array(gt.polygons)
             pred_poly = model(img, do_center_crop=True).doc_polygon
-            if len(pred_poly) == 4:
+            if pred_poly is not None and len(pred_poly) == 4:
                 poly = D.order_points_clockwise(poly)
                 pred_poly = D.order_points_clockwise(pred_poly)
                 mask_iou = D.polygon_iou(D.Polygon(pred_poly), D.Polygon(poly))

@@ -49,9 +49,7 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
                 **cfg_model['head']['options'])
 
         # Setup loss function
-        self.loss_fn_edge = DT.WeightedAWingLoss()
-        self.loss_fn_box = nn.SmoothL1Loss(beta=0.1)
-        self.loss_fn_point = nn.SmoothL1Loss(beta=0.1)
+        self.loss_fn = DT.WeightedAWingLoss()
 
         # for validation
         self.validation_step_outputs = []
@@ -63,43 +61,14 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        imgs, boxes, polys, edges, edge_masks = batch
-        preds, *other_branchs = self.forward(imgs)
-        pred_polys = preds.reshape(-1, 4, 2)
-
-        loss = self.loss_fn_point(pred_polys, polys)
-
-        # edge loss
-        edge_args = {}
-        box_args = {}
-        if len(other_branchs) > 0:
-            pred_edges = other_branchs[0].squeeze(1)
-            loss_edge = self.loss_fn_edge(pred_edges, edges, edge_masks)
-            loss += loss_edge * 0.1
-            edge_args.update({
-                'edges': edges,
-                'pred_edges': pred_edges,
-            })
-
-            if len(other_branchs) > 1:
-                pred_boxes = other_branchs[1]
-                loss_box = self.loss_fn_box(pred_boxes, boxes)
-                loss += loss_box
-                box_args.update({
-                    'boxes': boxes,
-                    'pred_boxes': pred_boxes,
-                })
-
-            if len(other_branchs) > 2:
-                aux_points = other_branchs[2]
-                aux_points = aux_points.reshape(-1, 4, 2)
-                aux_boxes = other_branchs[3]
-                loss += self.loss_fn_point(aux_points, polys) + \
-                    self.loss_fn_box(aux_boxes, boxes)
+        imgs, _, _, edges, edges_masks, kps, kps_masks = batch
+        preds_kps, preds_edges = self.forward(imgs)
+        loss_kps = self.loss_fn(preds_kps, kps, kps_masks)
+        loss_edge = self.loss_fn(preds_edges, edges, edges_masks)
+        loss = loss_kps + loss_edge
 
         if batch_idx % self.preview_batch == 0:
-            self.preview(batch_idx, imgs, polys, pred_polys,
-                         **edge_args, **box_args)
+            self.preview(batch_idx, imgs, kps, preds_kps, edges, preds_edges)
 
         self.log_dict(
             {
@@ -110,26 +79,43 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
             on_step=True,
         )
 
-        # checkout nan loss
-        if torch.isnan(loss):
-            self.preview(batch_idx, imgs, polys, pred_polys, suffix='NaN')
-            raise ValueError('Loss is nan.')
-
         return loss
+
+    @ staticmethod
+    def _get_point_with_max_area(mask):
+        polygons = D.Polygons.from_image(mask).drop_empty()
+        if len(polygons) > 0:
+            polygons = polygons[polygons.area == polygons.area.max()]
+        return polygons.centroid.flatten().tolist()
 
     def validation_step(self, batch, batch_idx):
         imgs, polys, doc_types = batch
-        preds, *_ = self.forward(imgs)
-        pred_polys = preds.reshape(-1, 4, 2)
+        preds_kps, *_ = self.forward(imgs)
+
+        imgs = imgs.detach().cpu().numpy()
+        polys = polys.detach().cpu().numpy()
+        preds_kps = preds_kps.detach().cpu().numpy()
 
         mask_ious = []
-        for pred, gt in zip(pred_polys, polys):
-            mask_ious.append(self.mask_iou(pred, gt))
+        for img, gt, preds in zip(imgs, polys, preds_kps):
+            h, w = img.shape[1:3]
+            pred_polygons = []
+            for pred in preds:
+                pred[pred < 0.3] = 0
+                pred = np.uint8(pred * 255)
+                pred = D.imresize(pred, size=(h, w))
+                point = self._get_point_with_max_area(pred)
+                if len(point) == 2:
+                    pred_polygons.append(point)
+            pred_polygons = np.array(pred_polygons)
+            gt = D.Polygon(gt, normalized=True).denormalize(w, h).numpy()
+
+            if len(pred_polygons) != 4:
+                mask_ious.append(0)
+            else:
+                mask_ious.append(self.mask_iou(pred_polygons, gt))
 
         self.validation_step_outputs.append((mask_ious, doc_types))
-
-        if batch_idx % self.preview_batch == 0:
-            self.preview(batch_idx, imgs, polys, pred_polys, suffix='val')
 
     def on_validation_epoch_end(self):
         mask_ious, doc_types = [], []
@@ -169,22 +155,12 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
         self.log('val_iou', mask_ious.mean(), sync_dist=True)
         self.validation_step_outputs.clear()
 
-    def mask_iou(self, pred_poly: D.Polygon, gt_poly: D.Polygon, is_torch: bool = True):
-        if is_torch:
-            height, width = self.cfg.common.image_size
-            pred_poly = pred_poly.detach().cpu().numpy()
-            gt_poly = gt_poly.detach().cpu().numpy()
-            pred_poly = D.Polygon(pred_poly, normalized=True) \
-                .denormalize(width, height)
-            gt_poly = D.Polygon(gt_poly, normalized=True) \
-                .denormalize(width, height)
-
-        if self.training:
-            return D.polygon_iou(pred_poly, gt_poly)
-        else:
-            # 設定 SmartDoc 資料集影像的尺寸
-            doc_h, doc_w = 2970, 2100
-            return D.jaccard_index(pred_poly.numpy(), gt_poly.numpy(), (doc_h, doc_w))
+    def mask_iou(self, pred_poly: np.ndarray, gt_poly: np.ndarray):
+        # 設定 SmartDoc 資料集影像的尺寸
+        doc_h, doc_w = 2970, 2100
+        doc_h = int(doc_h * (256 / 1080))
+        doc_w = int(doc_w * (256 / 1920))
+        return D.jaccard_index(pred_poly, gt_poly, (doc_h, doc_w))
 
     @ property
     def preview_dir(self):
@@ -194,57 +170,55 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
             img_path.mkdir(parents=True)
         return img_path
 
-    def preview(self, batch_idx, imgs, polys, pred_polys, edges=None,
-                pred_edges=None, boxes=None, pred_boxes=None, suffix='train'):
+    def preview(self, batch_idx, imgs, kps, preds_kps, edges, preds_edges, suffix='train'):
+
+        # setup preview dir
         preview_dir = self.preview_dir / f'{suffix}_batch_{batch_idx}'
         if not preview_dir.exists():
             preview_dir.mkdir(parents=True)
+
         imgs = imgs.detach().cpu().numpy()
-        polys = polys.detach().cpu().numpy()
-        pred_polys = pred_polys.reshape(-1, 4, 2).detach().cpu().numpy()
-        edges = edges.detach().cpu().numpy() \
-            if edges is not None else [None] * len(imgs)
-        pred_edges = pred_edges.detach().cpu().numpy() \
-            if pred_edges is not None else [None] * len(imgs)
-        boxes = boxes.detach().cpu().numpy() \
-            if boxes is not None else [None] * len(imgs)
-        pred_boxes = pred_boxes.detach().cpu().numpy() \
-            if pred_boxes is not None else [None] * len(imgs)
+        kps = kps.detach().cpu().numpy()
+        preds_kps = preds_kps.detach().cpu().numpy()
+        edges = edges.detach().cpu().numpy()
+        preds_edges = preds_edges.detach().cpu().numpy()
 
-        for idx, (img, poly, pred_poly, edge, pred_edge, box, pres_box) in \
-                enumerate(zip(imgs, polys, pred_polys, edges, pred_edges, boxes, pred_boxes)):
+        for idx, (img, kp, pred_kp, edge, preds_edge) in \
+                enumerate(zip(imgs, kps, preds_kps, edges, preds_edges)):
             img = np.uint8(np.transpose(img, (1, 2, 0)) * 255)
-            poly = D.Polygon(poly, normalized=True).denormalize(
-                *img.shape[:2][::-1])
-            pred_poly = D.Polygon(pred_poly, normalized=True).denormalize(
-                *img.shape[:2][::-1])
 
-            iou = self.mask_iou(pred_poly, poly, is_torch=False)
+            heatmap_gt = np.zeros_like(img)
+            colors = [(255, 255, 0), (0, 255, 0), (0, 0, 255),
+                      (0, 255, 255), (255, 0, 255), (255, 0, 0)]
+            for hmap, color in zip(kp, colors):
+                hmap = np.uint8(255 * hmap)
+                hmap = D.imresize(hmap, size=(img.shape[0], img.shape[1]))
+                hmap = cv2.applyColorMap(hmap, cv2.COLORMAP_BONE)
+                hmap[..., np.argwhere(np.array(color) == 0)] = 0
+                heatmap_gt = cv2.addWeighted(heatmap_gt, 1, hmap, 1, gamma=0)
 
-            img1 = D.draw_polygon(
-                img.copy(), poly, color=(0, 255, 0), thickness=2)
-            img2 = D.draw_polygon(
-                img.copy(), pred_poly, color=(0, 0, 255), thickness=2)
-            img_output = np.concatenate([img1, img2], axis=1)
+            edge = np.uint8(edge * 255)
+            edge = D.imresize(edge, size=(img.shape[0], img.shape[1]))
+            edge = cv2.applyColorMap(edge, cv2.COLORMAP_JET)
+            img_output1 = cv2.addWeighted(heatmap_gt, 1, edge, 0.5, gamma=0)
 
-            if edge is not None and pred_edge is not None:
-                edge = np.stack([np.uint8(edge * 255)] * 3, axis=-1)
-                pred_edge = np.stack([np.uint8(pred_edge * 255)] * 3, axis=-1)
-                img_edge = np.concatenate([edge, pred_edge], axis=1)
-                img_edge = D.imresize(img_edge, (None, img_output.shape[1]))
-                img_output = np.concatenate([img_output, img_edge], axis=0)
+            heatmap_pred = np.zeros_like(img)
+            for hmap, color in zip(pred_kp, colors):
+                hmap = np.uint8(255 * hmap)
+                hmap = D.imresize(hmap, size=(img.shape[0], img.shape[1]))
+                hmap = cv2.applyColorMap(hmap, cv2.COLORMAP_BONE)
+                hmap[..., np.argwhere(np.array(color) == 0)] = 0
+                heatmap_pred = cv2.addWeighted(
+                    heatmap_pred, 1, hmap, 1, gamma=0)
 
-            if box is not None and pres_box is not None:
-                box = D.Box(box, box_mode='XYWH', normalized=True) \
-                    .denormalize(*img.shape[:2][::-1])
-                pres_box = D.Box(pres_box, box_mode='XYWH', normalized=True) \
-                    .denormalize(*img.shape[:2][::-1])
-                img_box = D.draw_box(img.copy(), box, color=(0, 255, 0))
-                img_pres_box = D.draw_box(
-                    img.copy(), pres_box, color=(0, 0, 255))
-                img_box = np.concatenate([img_box, img_pres_box], axis=1)
-                img_box = D.imresize(img_box, (None, img_output.shape[1]))
-                img_output = np.concatenate([img_output, img_box], axis=0)
+            preds_edge = np.uint8(preds_edge * 255)
+            preds_edge = D.imresize(
+                preds_edge, size=(img.shape[0], img.shape[1]))
+            preds_edge = cv2.applyColorMap(preds_edge, cv2.COLORMAP_JET)
+            img_output2 = cv2.addWeighted(
+                heatmap_pred, 1, preds_edge, 0.5, gamma=0)
 
-            img_output_name = str(preview_dir / f'{idx}_{iou:.4f}.jpg')
+            img_output = np.concatenate(
+                [img, img_output1, img_output2], axis=1)
+            img_output_name = str(preview_dir / f'{idx}.jpg')
             D.imwrite(img_output, img_output_name)

@@ -36,6 +36,18 @@ class WarpLC100FPN(nn.Module):
         return self.head(self.neck(self.backbone(img)))
 
 
+class WarpLC100Heatmap(nn.Module):
+
+    def __init__(self, model: L.LightningModule):
+        super().__init__()
+        self.backbone = model.backbone
+        self.neck = model.neck
+        self.head = model.head.heatmap_rec
+
+    def forward(self, img: torch.Tensor):
+        return self.head(self.neck(self.backbone(img))[0]).squeeze(1)
+
+
 class WarpLC50FPNEncoder(nn.Module):
 
     def __init__(self, model: L.LightningModule):

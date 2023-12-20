@@ -28,6 +28,25 @@ class Backbone(nn.Module):
         return self.backbone(x)
 
 
+class HeatmapEdgeRecHead(nn.Module):
+
+    def __init__(self, in_c: int, **kwargs) -> None:
+        super().__init__()
+        self.heatmap_rec = nn.Sequential(
+            nn.Conv2d(in_c, 4, 3, padding=1),
+            nn.Sigmoid()
+        )
+        self.edge_rec = nn.Sequential(
+            nn.Conv2d(in_c, 1, 3, padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+        heatmap = self.heatmap_rec(xs[0]).squeeze(1)
+        edge = self.edge_rec(xs[0]).squeeze(1)
+        return heatmap, edge
+
+
 class PointRegHead(nn.Module):
 
     def __init__(
@@ -318,9 +337,9 @@ class BoxPointEdgeDecoderAuxNoFPNHead(nn.Module):
             image_size, (tuple, list)) else (image_size, image_size)
 
         nh, nw = (h // patch_size),  (w // patch_size)
-        mh, mw = (h // 64),  (w // 64)
+        mh, mw = (h // 16),  (w // 16)
 
-        self.pos_emb_low = nn.Parameter(torch.Tensor(nh * nw, 1, d_model))
+        self.pos_emb_low = nn.Parameter(torch.Tensor(nh * nw * 4, 1, d_model))
         self.pos_emb_high = nn.Parameter(torch.Tensor(mh * mw, 1, d_model))
         self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
         nn.init.kaiming_uniform_(self.pos_emb_low, a=math.sqrt(5))
@@ -329,7 +348,7 @@ class BoxPointEdgeDecoderAuxNoFPNHead(nn.Module):
 
         self.tokenizer_low = nn.Sequential(
             DT.SeparableConvBlock(
-                in_channels_list[0], d_model, patch_size, patch_size),
+                in_channels_list[0], d_model, patch_size, 4, 2),
             nn.Flatten(2),
             DT.Permute([2, 0, 1]),
             nn.LayerNorm(d_model)
@@ -346,9 +365,8 @@ class BoxPointEdgeDecoderAuxNoFPNHead(nn.Module):
         )
 
         self.tokenizer_high = nn.Sequential(
-            DT.SeparableConvBlock(in_channels_list[4], d_model, 3, 2, 1),
-            nn.BatchNorm2d(d_model),
-            DT.SeparableConvBlock(d_model, d_model, 3, 2, 1),
+            DT.SeparableConvBlock(
+                in_channels_list[4], d_model, 1, 1, 0),
             nn.Flatten(2),
             DT.Permute([2, 0, 1]),
             nn.LayerNorm(d_model)
@@ -364,31 +382,22 @@ class BoxPointEdgeDecoderAuxNoFPNHead(nn.Module):
             num_layers=num_layers,
         )
 
-        self.point_reg = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, num_points)
-        )
-
-        self.box_reg = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, 4)
-        )
-
+        self.point_reg = nn.Linear(d_model, num_points)
+        self.box_reg = nn.Linear(d_model, 4)
         self.edge_reg = nn.Sequential(
-            nn.Conv2d(in_channels_list[0], 1, 3, padding=1),
+            nn.Conv2d(in_channels_list[0], 64, 3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 1, 3, padding=1),
             nn.Sigmoid()
         )
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
 
     def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
-
         h_lavel_feat = self.tokenizer_high(xs[4])
         pos_emb_high = self.pos_emb_high.expand(-1, h_lavel_feat.size(1), -1)
         h_lavel_feat = h_lavel_feat + pos_emb_high

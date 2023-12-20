@@ -15,21 +15,21 @@ class DefaultImageAug:
 
     def __init__(self, p=0.5):
         self.coarse_drop_aug = DT.CoarseDropout(
-            max_holes=1, max_height=64, max_width=64, p=0)
+            max_holes=1, max_height=64, max_width=64, p=p)
         self.aug = A.Compose([
-            # DT.ShiftScaleRotate(
-            #     shift_limit=0.2,
-            #     scale_limit=[-0.6, 0.2]
-            # ),
-            # A.MotionBlur(),
-            # A.GaussNoise(),
+            DT.ShiftScaleRotate(
+                shift_limit=0.2,
+                scale_limit=[-0.6, 0.2]
+            ),
+            A.MotionBlur(),
+            A.GaussNoise(),
             A.ColorJitter(),
             A.ChannelShuffle(),
             A.HorizontalFlip(),
             A.VerticalFlip(),
             A.RandomRotate90(),
             A.Perspective(),
-            # A.GaussianBlur(blur_limit=(7, 11), p=0.5),
+            A.GaussianBlur(blur_limit=(7, 11), p=0.5),
         ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
@@ -246,35 +246,31 @@ class SyncDataset(BaseDataset):
         use_cordv0: bool = True,
         use_smartdoc: bool = True,
         use_private: bool = True,
+        length_of_dataset: int = 100000,
         *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
         kwargs.update({'aug_ratio': 0.0})
 
-        target_dataset = []
         if use_midv500:
             self.midv500 = MIDV500Dataset(**kwargs)
-            target_dataset.append('midv500')
         if use_midv2019:
             self.midv2019 = MIDV2019Dataset(**kwargs)
-            target_dataset.append('midv2019')
         if use_midv2020:
             self.midv2020 = MIDV2020Dataset(**kwargs)
-            target_dataset.append('midv2020')
         if use_cordv0:
             self.cord = CordDataset(**kwargs)
-            target_dataset.append('cord')
         if use_smartdoc:
             self.smartdoc = SmartDocDataset(**kwargs)
-            target_dataset.append('smartdoc')
         if use_private:
             self.private = PrivateDataset(**kwargs)
-            target_dataset.append('private')
 
         self.pool = D.get_files(
             DIR.parent / 'data' / 'docpool', suffix=['.jpg'])
-        target_dataset.append('pool')
-        self.target_dataset = target_dataset
+        self.length_of_dataset = length_of_dataset
+
+    def __len__(self) -> int:
+        return self.length_of_dataset
 
     def _build(self):
         ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
@@ -285,18 +281,27 @@ class SyncDataset(BaseDataset):
         return dataset
 
     def _random_get_doc_image(self):
-        # We NOT USE midv2019 for getting doc image, because of the dataset has
+        # NOT USE midv2019 for getting doc image, because of the dataset has
         # a lot of incomplete document.
 
-        tgt = np.random.choice(self.target_dataset)
-        if tgt == 'cord':
-            return D.imwarp_quadrangle(*self.cord[np.random.randint(len(self.cord))])
-        elif tgt == 'midv500':
-            return D.imwarp_quadrangle(*self.midv500[np.random.randint(len(self.midv500))])
+        tgts = ['pool']
+        if hasattr(self, 'midv500'):
+            tgts.append('midv500')
+        if hasattr(self, 'midv2020'):
+            tgts.append('midv2020')
+        if hasattr(self, 'smartdoc'):
+            tgts.append('smartdoc')
+
+        tgt = np.random.choice(tgts)
+        if tgt == 'midv500':
+            return D.imwarp_quadrangle(
+                *self.midv500[np.random.randint(len(self.midv500))])
         elif tgt == 'midv2020':
-            return D.imwarp_quadrangle(*self.midv2020[np.random.randint(len(self.midv2020))])
+            return D.imwarp_quadrangle(
+                *self.midv2020[np.random.randint(len(self.midv2020))])
         elif tgt == 'smartdoc':
-            return D.imwarp_quadrangle(*self.smartdoc[np.random.randint(len(self.smartdoc))])
+            return D.imwarp_quadrangle(
+                *self.smartdoc[np.random.randint(len(self.smartdoc))])
         else:
             return D.imread(self.pool[np.random.randint(len(self.pool))])
 
@@ -331,7 +336,7 @@ class SyncDataset(BaseDataset):
 
         if np.random.rand() < 0.5:
             # Generate background image from indoor dataset.
-            idx = np.random.randint(len(self))
+            idx = np.random.randint(len(self.dataset))
             img_path, _ = self.dataset[idx]
             img = D.imread(img_path)
             if img is None:
@@ -388,6 +393,7 @@ class DocAlignerDataset:
         root: Union[str, Path],
         image_size: Tuple[int, int] = (256, 256),
         edge_width: int = 3,
+        downscale: int = 2,
         aug_ratio: float = 0.0,
         aug_func: Callable = None,
         fuse_dataset: List[Dict[str, Any]] = None,
@@ -396,6 +402,7 @@ class DocAlignerDataset:
     ) -> None:
         self.root = root
         self.edge_width = edge_width
+        self.downscale = downscale
         self.output_tensor = output_tensor
 
         dataset = []
@@ -420,7 +427,7 @@ class DocAlignerDataset:
     def __len__(self) -> int:
         return sum(self.length_of_dataset)
 
-    def to_tensor(self, img, box, poly, edge, edge_mask):
+    def to_tensor(self, img, box, poly, edge, edge_mask, kps, kps_mask):
         poly = D.Polygon(poly).normalize(
             w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
         box = D.Box(box).normalize(
@@ -428,7 +435,9 @@ class DocAlignerDataset:
         img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
         edge = edge.astype('float32') / 255.0
         edge_mask = edge_mask.astype('float32')
-        return img, box, poly, edge, edge_mask
+        kps = np.transpose(kps.astype('float32'), (2, 0, 1)) / 255.0
+        kps_mask = np.transpose(kps_mask.astype('float32'), (2, 0, 1))
+        return img, box, poly, edge, edge_mask, kps, kps_mask
 
     @staticmethod
     def _find_position_in_list(lst, target_sum):
@@ -440,6 +449,59 @@ class DocAlignerDataset:
             cumulative_sum += value
         return None
 
+    def _gen_gaussian_point(self, img, poly, ksize: int = None):
+
+        # 128 x 128 -> kszie = 7
+        # 256 x 256 -> ksize = 15
+        ksize = ksize if ksize is not None else (img.shape[0] // 17)
+        kernel = cv2.getGaussianKernel(ksize, sigma=ksize//3)
+        kernel = np.outer(kernel, kernel)
+
+        # kernel is an ksize x ksize matrix, put gaussian kernel on the image.
+        masks, mask_dils = [], []
+        for p in poly:
+            x, y = p
+            x, y = int(x), int(y)
+            mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+
+            if x < 0 or x >= img.shape[1] or y < 0 or y >= img.shape[0]:
+                mask = D.imresize(mask, (img.shape[0] // self.downscale,
+                                         img.shape[1] // self.downscale))
+                mask_dil = D.imdilate(mask) > 0
+                masks.append(mask)
+                mask_dils.append(mask_dil)
+                continue
+
+            half_ksize = ksize // 2
+            mask = D.pad(mask, pad_size=(half_ksize, half_ksize))
+
+            x += half_ksize
+            y += half_ksize
+
+            # process exceed boundary
+            min_y = y - half_ksize
+            max_y = y + half_ksize + 1
+            min_x = x - half_ksize
+            max_x = x + half_ksize + 1
+
+            # re-sclae the kernel into 0~255
+            kernel = (kernel - kernel.min()) / \
+                (kernel.max() - kernel.min()) * 255
+
+            mask[min_y:max_y, min_x:max_x] = np.uint8(kernel)
+            mask = mask[half_ksize:-half_ksize, half_ksize:-half_ksize]
+            mask = D.imresize(mask, (img.shape[0] // self.downscale,
+                                     img.shape[1] // self.downscale))
+            mask_dil = D.imdilate(mask) > 0
+
+            masks.append(mask)
+            mask_dils.append(mask_dil)
+
+        masks = np.stack(masks, axis=-1)
+        mask_dils = np.stack(mask_dils, axis=-1)
+
+        return masks, mask_dils
+
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
         d_idx, f_idx = self._find_position_in_list(self.length_of_dataset, idx)
         img, poly = self.dataset[d_idx][f_idx]
@@ -448,7 +510,10 @@ class DocAlignerDataset:
             [poly.astype('int32')],
             color=(255, 255, 255)
         )
-        edge = D.imresize(edge, (edge.shape[0] // 2, edge.shape[1] // 2))
+        kps, kps_mask = self._gen_gaussian_point(img, poly.astype('int32'))
+
+        edge = D.imresize(
+            edge, (edge.shape[0] // self.downscale, edge.shape[1] // self.downscale))
         edge = D.imgrandient(D.imbinarize(edge), ksize=self.edge_width)
         edge_mask = D.imdilate(edge, ksize=self.edge_width) > 0
 
@@ -456,6 +521,6 @@ class DocAlignerDataset:
         box = D.Polygon(poly).to_box(box_mode='XYWH').numpy()
 
         if self.output_tensor:
-            return self.to_tensor(img, box, poly, edge, edge_mask)
+            return self.to_tensor(img, box, poly, edge, edge_mask, kps, kps_mask)
 
-        return img, box, poly, edge, edge_mask
+        return img, box, poly, edge, edge_mask, kps, kps_mask
