@@ -1,96 +1,88 @@
-# Model Training
+# Training Overview
 
-This section of the documentation provides guidance on how to perform model training. Follow the steps below to ensure a smooth training process.
+我們有一個配置參數文件的方式，可以自定義訓練過程。此文件位於 `config/***.yaml`。您可以使用此文件來調整各種設置，以匹配您的特定模型架構、數據集和訓練要求。
 
-## Requirements
+## 環境要求
 
-Make sure your environment meets the following requirements:
+請確保您的環境符合以下要求：
 
-- Python 3.8 or higher
+- Python 3.8 或更高版本
 
-## Install Dependencies
+## 執行訓練
 
-Before starting the training process, ensure that you have all the required dependencies installed. You can install the necessary Python packages using the following command:
-
-```bash
-pip install -r requirements.txt
-```
-
-This will install the packages listed in the `requirements.txt` file.
-
-## Running the Training
-
-Execute the following command to start the training process:
+執行以下命令開始訓練過程：
 
 ```bash
 python trainer.py --cfg_name lcnet_100_fuse_all_edge
 ```
 
-This command will use the `trainer.py` script along with the specified configuration name `lcnet_100_fuse_all_edge` to initiate the model training. Make sure that your current working directory is the one containing the script when running the command.
+此命令將使用 `trainer.py` 腳本以及指定的配置名稱 `lcnet_100_fuse_all_edge` 來啟動模型訓練。確保您的當前工作目錄是包含腳本的目錄，當運行此命令時。
 
-## Configuration Customization
+## 配置自定義
 
-Customizing the training process involves adjusting various settings to match your specific model architecture, dataset, and training requirements. The following sections provide details on how to customize each aspect of the training using the provided configuration in `config/***.yaml`:
+自定義訓練過程涉及調整各種設置以匹配您的特定模型架構、數據集和訓練要求。以下各節提供了如何使用 `config/***.yaml` 中提供的配置來自定義訓練的各個方面的詳細信息：
 
-### Trainer Settings
+### 訓練器設置
 
-Adjust the trainer settings to control the training process using PyTorch Lightning:
+調整訓練器設置以控制使用 PyTorch Lightning 的訓練過程：
 
-- `max_epochs`: Set the maximum number of training epochs.
-- `precision`: Define the precision (e.g., 32-bit) for calculations.
-- `val_check_interval`: Set the validation check interval during training.
-- `gradient_clip_val`: Set the threshold for gradient clipping.
-- `accumulate_grad_batches`: Define the number of batches to accumulate gradients.
-- `accelerator`: Choose the accelerator type for training.
-- `devices`: Specify the number of devices (GPUs) to utilize.
+- `max_epochs`：設置訓練的最大輪次（epoch）數。
+- `precision`：定義計算的精度（例如，32位）。
+- `val_check_interval`：設置訓練期間的驗證檢查間隔。
+- `gradient_clip_val`：設置梯度剪裁的閾值。
+- `accumulate_grad_batches`：定義累積梯度的批次數量。
+- `accelerator`：選擇用於訓練的加速器類型。
+- `devices`：指定使用的設備（GPU）數量。
 
-For more information, refer to the [PyTorch Lightning Trainer documentation](https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html).
+欲了解更多資訊，請參閱 [PyTorch Lightning 訓練器文檔](https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html)。
 
-### Model Settings
+### 模型設置
 
-Configure the model settings based on your custom-designed architecture:
+根據您自定義的架構配置模型設置：
 
-- `name`: Specify the name of your model.
-- `backbone`: Customize the backbone architecture and its parameters.
-- `neck`: Adjust neck architecture settings.
-- `head`: Define head architecture parameters specific to your model.
+- `name`：指定模型的名稱。
+- `backbone`：自定義主幹架構及其參數。
+- `neck`：調整頸部架構的設置。
+- `head`：定義適用於您模型的頭部架構參數。
 
-### Dataset Settings
+### Dataset
 
-Adapt the dataset settings according to your custom dataset:
+根據您的自定義數據集調整數據集設置：
 
-- `train_options`: Set the options for your training dataset, including paths, augmentation, and size.
-- `valid_options`: Configure options for the validation dataset similarly to the training dataset.
+- `train_options`：設置訓練數據集的選項，包括路徑、增強和大小。
+- `valid_options`：類似於訓練數據集，配置驗證數據集的選項。
 
-### Dataloader Settings
+### DataLoader
 
-Fine-tune the dataloader settings, leveraging PyTorch's DataLoader:
+利用 PyTorch 的 DataLoader 精調數據加載器設置：
 
-- `train_options`: Set the number of worker processes, shuffling, and batching for the training dataloader.
-- `valid_options`: Configure similar settings for the validation dataloader.
+- `train_options`：設置
 
-### Optimizer Settings
+訓練數據加載器的工作進程數、隨機排序和批次處理。
+- `valid_options`：為驗證數據加載器配置類似設置。
 
-Customize the optimizer settings using PyTorch's optimizers:
+### Optimizer
 
-- `name`: Specify the optimizer name (e.g., "AdamW").
-- `options`: Define optimizer options such as learning rate, weight decay, and betas.
+使用 PyTorch 的優化器自定義優化器設置：
 
-### Learning Rate Scheduler Settings
+- `name`：指定優化器名稱（例如：AdamW）。
+- `options`：定義優化器選項，如學習率、權重衰減和betas。
 
-Adapt the learning rate scheduler settings using PyTorch's scheduler:
+### Learning Rate Scheduler
 
-- `name`: Specify the scheduler name (e.g., "MultiStepLRWarmUp").
-- `options`: Configure scheduler-specific options like milestones and warm-up.
+使用 PyTorch 的調度器調整學習率調度器設置：
+
+- `name`：指定調度器名稱（例如：MultiStepLRWarmUp）。
+- `options`：配置調度器特定的選項。
 
 ### Callbacks
 
-Utilize PyTorch Lightning's callbacks to enhance training:
+利用 PyTorch Lightning 的回調來增強訓練：
 
-- Configure various callbacks like "ModelCheckpoint" and "LearningRateMonitor" to improve training efficiency and tracking.
+- 配置各種回調，如：`ModelCheckpoint` 和 `LearningRateMonitor`，以提高訓練效率和跟踪。
 
 ### Logger
 
-Leverage PyTorch Lightning's logger for monitoring training progress:
+利用 PyTorch Lightning 的日誌記錄器監控訓練進展：
 
-- Configure the "TensorBoardLogger" to visualize training metrics using TensorBoard.
+- 配置 `TensorBoardLogger`，使用 TensorBoard 可視化訓練指標。

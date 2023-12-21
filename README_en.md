@@ -12,9 +12,26 @@
 
 This project is a visual system focused on the localization of documents in the image. Our primary aim for this system is to provide predictions of the four corners of documents. This feature is critically important in applications dealing with fintech, banking, and the shared economy, offering a reduction in errors and computational requirements for various image processing and text analysis tasks.
 
+<div align="center">
+    <img src="./docs/title.jpg" width="800">
+</div>
+
 ## Table of Contents
 - [Introduction](#introduction)
 - [Table of Contents](#table-of-contents)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+    - [Import Necessary Dependencies](#import-necessary-dependencies)
+    - [ModelType](#modeltype)
+    - [Backend](#backend)
+    - [Create a DocAligner Instance](#create-a-docaligner-instance)
+    - [Read and Process Images](#read-and-process-images)
+    - [Output Results](#output-results)
+        - [Draw Document Polygon](#draw-document-polygon)
+        - [Get the Drawn numpy Image](#get-the-drawn-numpy-image)
+        - [Extract the Flattened Document Image](#extract-the-flattened-document-image)
+        - [Convert Document Information to JSON](#convert-document-information-to-json)
+        - [Example](#example)
 - [Dataset](#dataset)
 - [Dataset Preprocessing](#dataset-preprocessing)
 - [Dataset Implementation](#dataset-implementation)
@@ -27,6 +44,272 @@ This project is a visual system focused on the localization of documents in the 
     - [7. Image Augmentation](#7-image-augmentation)
 - [Building the Training Environment](#building-the-training-environment)
 - [Running Training (Based on Docker)](#running-training-based-on-docker)
+- [Convert to ONNX Format](#convert-to-onnx-format)
+
+---
+
+## Installation
+
+Currently, we do not offer an installation package on Pypi. To use this project, you can directly clone it from Github and then install the necessary dependencies. Before proceeding with the installation, please ensure that you have [DocsaidKit](https://github.com/DocsaidLab/DocsaidKit) installed.
+
+If you have already installed DocsaidKit, follow these steps:
+
+1. Clone the project:
+
+   ```bash
+   git clone https://github.com/DocsaidLab/DocAligner.git
+   ```
+
+2. Enter the project directory:
+
+   ```bash
+   cd DocAligner
+   ```
+
+3. Create a packaging file:
+
+   ```bash
+   python setup.py bdist_wheel
+   ```
+
+4. Install the packaging file:
+
+   ```bash
+   pip install dist/docaligner-*-py3-none-any.whl
+   ```
+
+By following these steps, you should be able to successfully install DocAligner.
+
+Once the installation is complete, you can start using the project.
+
+---
+
+## Quick Start
+
+We provide a simple model inference interface, which includes pre-processing and post-processing logic.
+
+First, you need to import the required dependencies and create a DocAligner class.
+
+### Import Necessary Dependencies
+
+```python
+import docsaidkit as D
+from docsaidkit import Backend
+from docaligner import DocAligner, ModelType
+```
+
+### ModelType
+
+`ModelType` is an enumeration type used to specify the model type for DocAligner. It includes the following options:
+
+- `heatmap`: Uses a heatmap model for document alignment.
+- `point`: Uses a point detection model for document alignment.
+
+More model types may be added in the future, and we will update them here.
+
+### Backend
+
+`Backend` is an enumeration type used to specify the computational backend for DocAligner. It includes the following options:
+
+- `cpu`: Uses the CPU for computations.
+- `cuda`: Uses the GPU for computations (requires appropriate hardware support).
+
+ONNXRuntime supports many backends, including CPU, CUDA, OpenCL, DirectX, TensorRT, etc. If you have other requirements, you can refer to [**ONNXRuntime Execution Providers**](https://onnxruntime.ai/docs/execution-providers/index.html) and modify it to the corresponding backend.
+
+### Create a DocAligner Instance
+
+```python
+model = DocAligner(
+    gpu_id=0,  # GPU ID, set to -1 if not using GPU
+    backend=Backend.cpu,  # Choose the computational backend, can be Backend.cpu or Backend.cuda
+    model_type=ModelType.point  # Choose the model type, can be ModelType.heatmap or ModelType.point
+)
+```
+
+Note:
+
+- Using the cuda backend requires not only appropriate hardware but also the installation of the corresponding CUDA drivers and toolkit. If CUDA is not installed in your system or the installed version is incorrect, the cuda backend will not be available.
+
+- For issues related to ONNXRuntime installation dependencies, please refer to [ONNXRuntime Release Notes](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements).
+
+### Read and Process Images
+
+```python
+# Read the image
+img = D.imread('path/to/your/image.jpg')
+
+# You can also use our test image
+# img = D.imread('docs/run_test_card.jpg')
+
+# Use the model for inference
+result = model(img) # result is a Document type
+```
+
+### Output Results
+
+The inference result you get is wrapped as a `Document` type, containing document polygons, OCR text information, etc.
+
+The `Document` class offers various features to help process and analyze document images. Main features include:
+
+1. **Document Polygon Processing**: Capable of identifying and manipulating document boundaries.
+2. **OCR Text Recognition**: Supports recognizing text from images.
+3. **Image Transformation**: Capable of transforming images based on document boundaries.
+
+- Attributes
+    - `image`: Stores the image of the document.
+    - `doc_polygon`: The polygonal boundary of the document.
+    - `ocr_texts`: The list of texts recognized by OCR.
+    - `ocr_polygons`: The polygonal boundaries corresponding to `ocr_texts`.
+
+- Methods
+    - `gen_doc_flat_img()`: Transforms the document image according to its polygonal boundary.
+    - `gen_doc_info_image()`: Generates an image marked with document boundaries and directions.
+    - `gen_ocr_info_image()`: Generates an image showing OCR text and its boundaries.
+    - `draw_doc()`: Saves the image marked with document boundaries to a specified path.
+    - `draw_ocr()`: Saves the image showing OCR text and boundaries to a specified path.
+
+In this module, we will not use OCR-related features, so we will only use the `image` and `doc_polygon` attributes. After obtaining the inference result, you can perform various post-processing operations.
+
+#### Draw Document Polygon
+
+```python
+# Draw and save an image with the document polygon
+result.draw_doc('path/to/save/folder', 'output_image.jpg')
+```
+
+Or if you don't specify a save path, it will be saved in the current directory with an automatically assigned timestamp.
+
+```python
+result.draw_doc()
+```
+
+#### Get the Drawn numpy Image
+
+If you have other requirements, you can use the `gen_doc_info_image` method and then process it yourself.
+
+```python
+img = result.gen_doc_info_image()
+```
+
+#### Extract the Flattened Document Image
+
+If you know the original size of the document, you can use the `gen_doc_flat_img` method to transform the document image into a rectangular image according to its polygonal boundary.
+
+```python
+H, W = 1080, 1920
+flat_img = result.gen_doc_flat_img(image_size=(H, W))
+```
+
+For an unknown image type, you can also proceed without specifying the `image_size` parameter. In this case, the minimum rectangular image will be calculated based
+
+ on the document polygon, and the length and width of the minimum rectangle will be set as `H` and `W`.
+
+```python
+flat_img = result.gen_doc_flat_img()
+```
+
+#### Convert Document Information to JSON
+
+If you need to save document information to a JSON file, use the `be_jsonable` method.
+
+When converting, consider excluding the image to save space, defaulting to `exclude_image=True`.
+
+```python
+doc_json = result.be_jsonable()
+D.dump_json(doc_json)
+```
+
+#### Example
+
+```python
+import docsaidkit as D
+from docaligner import DocAligner
+
+model = DocAligner(D.Backend.cpu)
+img = D.imread('docs/run_test_card.jpg')
+result = model(img)
+
+# You can draw the result by yourself.
+output_img = D.draw_polygon(img, result.doc_polygon)
+flat_img = result.gen_doc_flat_img(image_size=(480, 800))
+D.imwrite(output_img)
+D.imwrite(flat_img)
+
+# Or you can draw the colorful image from `draw_doc` method.
+# result.draw_doc()
+```
+
+<div align="center">
+    <img src="./docs/flat_result.jpg" width="800">
+</div>
+
+---
+
+## Benchmark
+
+We utilized the [SmartDoc 2015](https://github.com/jchazalon/smartdoc15-ch1-dataset) dataset as our test dataset.
+
+### Evaluation Protocol
+
+We used the **Jaccard Index** as our measurement standard. This index summarizes the ability of different methods in accurately segmenting page outlines and penalizes those methods that fail to detect document objects in certain frames.
+
+The evaluation process starts by using the size and coordinates of documents in each frame to perform a perspective transformation on the quadrilateral coordinates of the submitted method S and the ground truth G, resulting in the corrected quadrilaterals S0 and G0. Such transformation makes all evaluation metrics comparable within the document reference frame. For each frame f, the Jaccard Index (JI) is calculated, which is a measure of the extent of overlap between the corrected quadrilaterals, calculated as follows:
+
+$$ JI(f) = \frac{\text{area}(G0 \cap S0)}{\text{area}(G0 \cup S0)} $$
+
+where $` \text{area}(G0 \cap S0) `$ is defined as the intersection polygon of the detected quadrilateral and the ground truth quadrilateral, and $` \text{area}(G0 \cup S0) `$ is their union polygon. The overall score for each method will be the average of scores for all frames in the test dataset.
+
+### Evaluation Results
+
+The current model's performance has not yet reached the scores of state-of-the-art (SoTA) models, but it can already meet the needs of most application scenarios.
+
+For instance, the `PointRec-256` model, with a current development scale of 6 MB and computational requirement of approximately 1.2 GFLOPs, can run on various devices, including mobile phones and embedded devices.
+
+The `PointRec-512` model, while having the same model size, has double the input image resolution, thus quadrupling the computational requirement to about 5.0 GFLOPs.
+
+We believe that training methods and dataset compositions are significant factors affecting model performance. Therefore, we will continue to update our models and provide more datasets to enhance the models' effectiveness.
+
+| Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **PointRec-512 (Ours)** |  **0.9821** |  **0.9798** |  **0.9831** |  **0.9753** |  **0.9055** |  **0.9727**|
+| **PointRec-256 (Ours)** |  **0.9681** |  **0.9597** |  **0.9720** |  **0.9597** |  **0.8864** |  **0.9571**|
+| - | - | - | - | - | - | - |
+| HU-PageScan | - | - | - | - | - | 0.9923 |
+| Advanced Hough |  0.9886 |  0.9858 |  0.9896 |  0.9806 |  - |  0.9866 |
+| LDRNet | 0.9877 | 0.9838 | 0.9862 | 0.9802 | 0.9858 | 0.9849 |
+| Coarse-to-Fine |  0.9876 |  0.9839 |  0.9830 |  0.9843 |  0.9614 |  0.9823 |
+| SEECS-NUST-2 |  0.9832 |  0.9724 |  0.9830 |  0.9695 |  0.9478 |  0.9743 |
+| LDRE | 0.9869 | 0.9775 | 0.9889 | 0.9837 | 0.8613 | 0.9716 |
+| SmartEngines |  0.9885 |  0.9833 |  0.9897 |  0.9785 |  0.6884 |  0.9548 |
+| NetEase |  0.9624 |  0.9552 |  0.9621 |  0.9511 |  0.2218 |  0.8820 |
+| RPPDI-UPE |  0.8274 |  0.9104 |  0.9697 |  0.3649 |  0.2162 |  0.7408 |
+| SEECS-NUST |  0.8875 |  0.8264 |  0.7832 |  0.7811 |  0.0113 |  0.7393 |
+
+---
+
+## Training the Model
+
+We do not offer the functionality for fine-tuning the model, but you can use our training module to produce a model yourself. Below, we provide a complete training process to help you start from scratch.
+
+Broadly, you need to follow several steps:
+
+1. **Prepare the Dataset**: Collect and organize data suitable for your needs.
+2. **Set Up the Training Environment**: Configure the required hardware and software environment.
+3. **Execute Training**: Train the model using your data.
+4. **Evaluate the Model**: Test the model's performance and make adjustments.
+5. **Convert to ONNX Format**: For better compatibility and performance, convert the model to ONNX format.
+6. **Assess Quantization Needs**: Decide if quantization of the model is needed to optimize performance.
+7. **Integrate and Package the Model**: Incorporate the ONNX model into your project.
+
+Let's now break down the training process step-by-step.
+
+---
+
+Before we start, we understand that you might have the budget but not enough time to contemplate how to make custom adjustments for your on-site environment. Therefore, you can also directly contact us for consultation. Based on your budget and the complexity of the task, we can arrange engineers to undertake custom development for you.
+
+For more assistance, please contact us via email: **docsaidlab@gmail.com**
+
+---
 
 ## Dataset
 
@@ -313,6 +596,8 @@ Our default [Dockerfile](./docker/Dockerfile) is specifically designed for docum
     - `ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]` and `CMD ["bash"]`
     - These commands specify the default command executed when the container starts. When the container launches, it runs the `/entrypoint.sh` script.
 
+---
+
 ## Running Training (Based on Docker)
 
 This section explains how to use the Docker image you've built for document alignment training.
@@ -373,3 +658,85 @@ bash DocAligner/docker/train.bash lcnet150_fpn_d3_r256
 - Note: For configuration file details, refer to [DocAligner/model/README.md](./model/README.md).
 
 By following these steps, you can safely execute document alignment training tasks within a Docker container, leveraging Docker's isolated environment for consistency and reproducibility. This approach makes project deployment and scaling more convenient and flexible.
+
+---
+
+## Converting Model to ONNX Format (Based on Docker)
+
+Here's a guide on how to convert your model to ONNX format using Docker.
+
+First, let's look at the contents of the `to_onnx.bash` file:
+
+```bash
+#!/bin/bash
+
+cat > torch2onnx.py <<EOF
+from fire import Fire
+from DocAligner.model import main_docaligner_torch2onnx
+
+if __name__ == '__main__':
+    Fire(main_docaligner_torch2onnx)
+EOF
+
+docker run \
+    -e USER_ID=$(id -u) \
+    -e GROUP_ID=$(id -g) \
+    --shm-size=64g \
+    --ipc=host --net=host \
+    -v $PWD/DocAligner:/code/DocAligner \
+    -v $PWD/torch2onnx.py:/code/torch2onnx.py \
+    -v /data/Dataset:/data/Dataset \
+    -it --rm doc_align_train python torch2onnx.py --cfg_name $1
+```
+
+You don't need to modify this file. Instead, you should make changes to the corresponding file: `model/to_onnx.py`.
+
+During the training process, you might use many branches to supervise the model's training, but during the inference stage, you might only need one of those branches. Hence, we need to convert the model to ONNX format, retaining only the branch needed for inference.
+
+For example:
+
+```python
+class WarpLC100FPN(nn.Module):
+
+    def __init__(self, model: L.LightningModule):
+        super().__init__()
+        self.backbone = model.backbone
+        self.neck = model.neck
+        self.head = model.head
+
+    def forward(self, img: torch.Tensor):
+        return self.head(self.neck(self.backbone(img)))
+
+```
+
+In the example above, we extract the branch used for inference and wrap it into a new model `WarpLC100FPN`. Then, set the corresponding parameters in the yaml config:
+
+```yaml
+onnx:
+  name: WarpLC100FPN
+  input_shape:
+    img:
+      shape: [1, 3, 256, 256]
+      dtype: float32
+  input_names: ['img']
+  output_names: ['output']
+  dynamic_axes:
+    img:
+      '0': batch_size
+    output:
+      '0': batch_size
+  options:
+    opset_version: 16
+    verbose: False
+    do_constant_folding: True
+```
+
+This specifies the model's input size, input name, output name, and the ONNX version number.
+
+We've already written the conversion part for you. After completing the modifications above, ensure that the `model/to_onnx.py` file is pointing to your model. Then, go up to the parent directory of `DocAligner` and run the following command to initiate the conversion:
+
+```bash
+bash DocAligner/docker/to_onnx.bash lcnet100_point_reg_bifpn # Replace this with your configuration file name
+```
+
+At this point, you will see a new ONNX model in the `DocAligner/model` directory. Move this model to the corresponding inference model directory in `docaligner/xxx` to perform inference.
