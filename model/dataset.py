@@ -7,6 +7,7 @@ import docsaidkit as D
 import docsaidkit.torch as DT
 import numpy as np
 from docsaidkit import INTER
+from numpy import ndarray
 
 DIR = D.get_curdir(__file__)
 
@@ -17,19 +18,35 @@ class DefaultImageAug:
         self.coarse_drop_aug = DT.CoarseDropout(
             max_holes=1, max_height=64, max_width=64, p=p)
         self.aug = A.Compose([
-            DT.ShiftScaleRotate(
-                shift_limit=0.2,
-                scale_limit=[-0.6, 0.2]
-            ),
-            A.MotionBlur(),
-            A.GaussNoise(),
-            A.ColorJitter(),
-            A.ChannelShuffle(),
-            A.HorizontalFlip(),
-            A.VerticalFlip(),
-            A.RandomRotate90(),
-            A.Perspective(),
-            A.GaussianBlur(blur_limit=(7, 11), p=0.5),
+
+            A.OneOf([
+                DT.ShiftScaleRotate(
+                    shift_limit=0.2,
+                    scale_limit=[-0.6, 0.2]
+                ),
+                A.Perspective(),
+            ], p=p),
+
+            A.OneOf([
+                A.GaussNoise(),
+                A.ISONoise(),
+                A.MotionBlur(),
+                A.GaussianBlur(blur_limit=(3, 11), p=0.5),
+            ], p=p),
+
+            A.OneOf([
+                A.HorizontalFlip(),
+                A.VerticalFlip(),
+                A.RandomRotate90(),
+            ], p=p),
+
+            A.OneOf([
+                A.ColorJitter(),
+                A.ChannelShuffle(),
+                A.ChannelDropout(),
+                A.RGBShift(),
+            ])
+
         ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
@@ -48,6 +65,7 @@ class BaseDataset:
         interpolation: Union[str, int, INTER] = INTER.BILINEAR,
         aug_func: Callable = None,
         aug_ratio: float = 0.0,
+        **kwargs
     ) -> None:
         self.image_size = image_size
         self.interpolation = interpolation
@@ -334,7 +352,19 @@ class SyncDataset(BaseDataset):
 
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
 
-        if np.random.rand() < 0.5:
+        tgts = []
+        if hasattr(self, 'midv500'):
+            tgts.append('midv500')
+        if hasattr(self, 'midv2019'):
+            tgts.append('midv2019')
+        if hasattr(self, 'midv2020'):
+            tgts.append('midv2020')
+        if hasattr(self, 'smartdoc'):
+            tgts.append('smartdoc')
+        if hasattr(self, 'private'):
+            tgts.append('private')
+
+        if np.random.rand() < 0.5 or len(tgts) == 0:
             # Generate background image from indoor dataset.
             idx = np.random.randint(len(self.dataset))
             img_path, _ = self.dataset[idx]
@@ -344,18 +374,6 @@ class SyncDataset(BaseDataset):
             poly = self._generate_random_quadrant_points()
         else:
             # Generate background image from another dataset.
-            tgts = []
-            if hasattr(self, 'midv500'):
-                tgts.append('midv500')
-            if hasattr(self, 'midv2019'):
-                tgts.append('midv2019')
-            if hasattr(self, 'midv2020'):
-                tgts.append('midv2020')
-            if hasattr(self, 'smartdoc'):
-                tgts.append('smartdoc')
-            if hasattr(self, 'private'):
-                tgts.append('private')
-
             tgt = np.random.choice(tgts)
             if tgt == 'midv500':
                 img, poly = self.midv500[
@@ -386,6 +404,40 @@ class SyncDataset(BaseDataset):
         return sync_img, poly
 
 
+class BackgroundDataset(BaseDataset):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        image_size = kwargs.get('image_size', None)
+        self.random_resize_crop = A.RandomResizedCrop(
+            height=image_size[0],
+            width=image_size[1],
+            p=1
+        )
+
+    def _build(self):
+        ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
+        dataset = []
+        for data in D.Tqdm(ds):
+            img_path = self.root / data['img_path']
+            if D.imread(img_path) is None:
+                continue
+            dataset.append(img_path)
+        return dataset
+
+    def __getitem__(self, idx) -> Tuple[ndarray, ndarray]:
+        idx = np.random.randint(len(self.dataset))
+        img = D.imread(self.dataset[idx])
+        img = self.random_resize_crop(image=img)['image']
+        poly = np.array([
+            [0, 0],
+            [img.shape[1], 0],
+            [img.shape[1], img.shape[0]],
+            [0, img.shape[0]]
+        ]).astype('float32')
+        return img, poly
+
+
 class DocAlignerDataset:
 
     def __init__(
@@ -399,11 +451,18 @@ class DocAlignerDataset:
         fuse_dataset: List[Dict[str, Any]] = None,
         output_tensor: bool = True,
         interpolation: Union[str, int, INTER] = INTER.BILINEAR,
+        length_of_dataset: int = None,
+        random_output: bool = False,
+        random_nodoc_ratio: float = 0,
     ) -> None:
         self.root = root
         self.edge_width = edge_width
         self.downscale = downscale
         self.output_tensor = output_tensor
+        self.random_output = random_output
+        self.random_nodoc_ratio = random_nodoc_ratio
+        self.background_dataset = BackgroundDataset(
+            root=root, image_size=image_size)
 
         dataset = []
         n_dataset = []
@@ -422,22 +481,15 @@ class DocAlignerDataset:
             n_dataset.append(len(_ds))
 
         self.dataset = dataset
-        self.length_of_dataset = n_dataset
+
+        if random_output:
+            length_of_dataset = 100000 if length_of_dataset is None else length_of_dataset
+            self.length_of_dataset = [length_of_dataset]
+        else:
+            self.length_of_dataset = n_dataset
 
     def __len__(self) -> int:
         return sum(self.length_of_dataset)
-
-    def to_tensor(self, img, box, poly, edge, edge_mask, kps, kps_mask):
-        poly = D.Polygon(poly).normalize(
-            w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
-        box = D.Box(box).normalize(
-            w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
-        img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
-        edge = edge.astype('float32') / 255.0
-        edge_mask = edge_mask.astype('float32')
-        kps = np.transpose(kps.astype('float32'), (2, 0, 1)) / 255.0
-        kps_mask = np.transpose(kps_mask.astype('float32'), (2, 0, 1))
-        return img, box, poly, edge, edge_mask, kps, kps_mask
 
     @staticmethod
     def _find_position_in_list(lst, target_sum):
@@ -451,9 +503,11 @@ class DocAlignerDataset:
 
     def _gen_gaussian_point(self, img, poly, ksize: int = None):
 
-        # 128 x 128 -> kszie = 7
-        # 256 x 256 -> ksize = 15
+        # 128 x 128 -> kszie ~= 7
+        # 256 x 256 -> ksize ~= 15
         ksize = ksize if ksize is not None else (img.shape[0] // 17)
+        if ksize % 2 == 0:
+            ksize += 1
         kernel = cv2.getGaussianKernel(ksize, sigma=ksize//3)
         kernel = np.outer(kernel, kernel)
 
@@ -464,7 +518,7 @@ class DocAlignerDataset:
             x, y = int(x), int(y)
             mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
 
-            if x < 0 or x >= img.shape[1] or y < 0 or y >= img.shape[0]:
+            if x <= 0 or x >= img.shape[1] or y <= 0 or y >= img.shape[0]:
                 mask = D.imresize(mask, (img.shape[0] // self.downscale,
                                          img.shape[1] // self.downscale))
                 mask_dil = D.imdilate(mask) > 0
@@ -502,25 +556,47 @@ class DocAlignerDataset:
 
         return masks, mask_dils
 
-    def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
-        d_idx, f_idx = self._find_position_in_list(self.length_of_dataset, idx)
-        img, poly = self.dataset[d_idx][f_idx]
-        edge = cv2.fillPoly(
-            np.zeros_like(img),
-            [poly.astype('int32')],
-            color=(255, 255, 255)
-        )
-        kps, kps_mask = self._gen_gaussian_point(img, poly.astype('int32'))
-
+    def _gen_edge(self, img, poly):
+        edge = cv2.fillPoly(np.zeros_like(img), [poly], color=(255, 255, 255))
         edge = D.imresize(
             edge, (edge.shape[0] // self.downscale, edge.shape[1] // self.downscale))
         edge = D.imgrandient(D.imbinarize(edge), ksize=self.edge_width)
         edge_mask = D.imdilate(edge, ksize=self.edge_width) > 0
+        return edge, edge_mask
+
+    def to_tensor(self, img, box, poly, edge, edge_mask, hmaps, hmaps_mask):
+        poly = D.Polygon(poly).normalize(
+            w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
+        box = D.Box(box).normalize(
+            w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
+        img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
+        edge = edge.astype('float32') / 255.0
+        edge_mask = edge_mask.astype('float32')
+        hmaps = np.transpose(hmaps.astype('float32'), (2, 0, 1)) / 255.0
+        hmaps_mask = np.transpose(hmaps_mask.astype('float32'), (2, 0, 1))
+        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask
+
+    def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
+
+        if np.random.rand() < self.random_nodoc_ratio:
+            # Generate background image from indoor dataset.
+            img, poly = self.background_dataset[idx]
+        else:
+            if self.random_output:
+                d_idx = np.random.randint(len(self.dataset))
+                f_idx = np.random.randint(len(self.dataset[d_idx]))
+            else:
+                d_idx, f_idx = self._find_position_in_list(
+                    self.length_of_dataset, idx)
+            img, poly = self.dataset[d_idx][f_idx]
+
+        hmaps, hmaps_mask = self._gen_gaussian_point(img, poly.astype('int32'))
+        edge, edge_mask = self._gen_edge(img, poly.astype('int32'))
 
         # Polygon -> Bounding Box
         box = D.Polygon(poly).to_box(box_mode='XYWH').numpy()
 
         if self.output_tensor:
-            return self.to_tensor(img, box, poly, edge, edge_mask, kps, kps_mask)
+            return self.to_tensor(img, box, poly, edge, edge_mask, hmaps, hmaps_mask)
 
-        return img, box, poly, edge, edge_mask, kps, kps_mask
+        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask

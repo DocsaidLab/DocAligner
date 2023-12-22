@@ -47,6 +47,102 @@ class HeatmapEdgeRecHead(nn.Module):
         return heatmap, edge
 
 
+class HeatmapEdgePointRegDecoderHead(nn.Module):
+
+    def __init__(
+        self,
+        in_c: int,
+        d_model: int,
+        num_layers: int,
+        num_points: int,
+        image_size: List[int],
+        patch_size: int,
+        nhead: int,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+
+        h, w = image_size if isinstance(
+            image_size, (tuple, list)) else (image_size, image_size)
+
+        nh, nw = (h // patch_size),  (w // patch_size)
+        mh, mw = (h // 16),  (w // 16)
+
+        self.pos_emb_low = nn.Parameter(torch.Tensor(nh * nw, 1, d_model))
+        self.pos_emb_high = nn.Parameter(torch.Tensor(mh * mw, 1, d_model))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
+        nn.init.kaiming_uniform_(self.pos_emb_low, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.pos_emb_high, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.cls_token, a=math.sqrt(5))
+
+        self.tokenizer_low = nn.Sequential(
+            DT.SeparableConvBlock(in_c, d_model, patch_size, patch_size),
+            nn.Flatten(2),
+            DT.Permute([2, 0, 1]),
+            nn.LayerNorm(d_model)
+        )
+        self.decoder_low = nn.TransformerDecoder(
+            decoder_layer=nn.TransformerDecoderLayer(
+                d_model=d_model,
+                dim_feedforward=d_model * 2,
+                norm_first=True,
+                dropout=0,
+                nhead=nhead,
+            ),
+            num_layers=num_layers,
+        )
+
+        self.tokenizer_high = nn.Sequential(
+            DT.SeparableConvBlock(in_c, d_model),
+            nn.Flatten(2),
+            DT.Permute([2, 0, 1]),
+            nn.LayerNorm(d_model)
+        )
+        self.decoder_high = nn.TransformerDecoder(
+            decoder_layer=nn.TransformerDecoderLayer(
+                d_model=d_model,
+                dim_feedforward=d_model * 2,
+                norm_first=True,
+                dropout=0,
+                nhead=nhead,
+            ),
+            num_layers=num_layers,
+        )
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.point_reg = nn.Linear(d_model, num_points)
+        self.heatmap_rec = nn.Sequential(
+            nn.Conv2d(in_c, 4, 3, padding=1),
+            nn.Sigmoid()
+        )
+        self.edge_rec = nn.Sequential(
+            nn.Conv2d(in_c, 1, 3, padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+
+        h_lavel_feat = self.tokenizer_high(xs[4])
+        pos_emb_high = self.pos_emb_high.expand(-1, h_lavel_feat.size(1), -1)
+        h_lavel_feat = h_lavel_feat + pos_emb_high
+
+        query = self.cls_token.expand(-1, h_lavel_feat.size(1), -1)
+        query = self.decoder_high(query, h_lavel_feat)
+        query = self.norm1(query)  # t, b, d
+
+        l_level_feat = self.tokenizer_low(xs[0])
+        pos_emb_low = self.pos_emb_low.expand(-1, l_level_feat.size(1), -1)
+        l_level_feat = l_level_feat + pos_emb_low
+        query = self.decoder_low(query, l_level_feat)
+        query = self.norm2(query)
+        points = self.point_reg(query.transpose(0, 1).squeeze(1))
+
+        heatmap = self.heatmap_rec(xs[0]).squeeze(1)
+        edge = self.edge_rec(xs[0]).squeeze(1)
+
+        return points, heatmap, edge
+
+
 class PointRegHead(nn.Module):
 
     def __init__(
@@ -470,3 +566,121 @@ class ViTDecoder(nn.Module):
         x = self.norm(x).transpose(0, 1).squeeze(1)
         points = self.point_reg(query)
         return points,
+
+
+class ViT(nn.Module):
+
+    def __init__(
+        self,
+        d_model: int,
+        num_layers: int,
+        image_size: Tuple[int, int],
+        in_c: int,
+        patch_size: int,
+        dim_feedforward: int,
+        **kwargs,
+    ):
+        super().__init__()
+        h, w = image_size
+        nh, nw = h // patch_size, w // patch_size
+        self.cls_token = nn.Parameter(torch.Tensor(1, 1, d_model))
+        self.pos_emb = nn.Parameter(torch.Tensor(nh*nw, 1, d_model))
+        nn.init.kaiming_uniform_(self.cls_token, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.pos_emb, a=math.sqrt(5))
+
+        self.tokenizer = nn.Sequential(
+            DT.SeparableConvBlock(
+                in_c,
+                d_model,
+                patch_size,
+                patch_size,
+            ),
+            nn.Flatten(2),
+            DT.Permute([2, 0, 1]),
+            nn.LayerNorm(d_model),
+        )
+
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer=nn.TransformerEncoderLayer(
+                d_model=d_model,
+                dim_feedforward=dim_feedforward,
+                norm_first=True,
+                dropout=0,
+                **kwargs,
+            ),
+            num_layers=num_layers
+        )
+
+        self.norm = nn.LayerNorm(d_model)
+
+    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+        x = self.tokenizer(x)
+        x = x + self.pos_emb.expand(-1, x.size(1), -1)
+        cls_token = self.cls_token.expand(-1, x.size(1), -1)
+        x = torch.cat((cls_token, x), dim=0)
+        x = self.encoder(x)
+        x = self.norm(x)
+        cls_token, img_token = torch.split(x, [1, x.size(0) - 1], dim=0)
+        return cls_token, img_token
+
+
+class ViTPointHeatmapEdgeRegHead(nn.Module):
+
+    def __init__(
+        self,
+        d_model: int,
+        n_points: int,
+        up_scale: int,
+        patch_size: int,
+        **kwargs
+    ):
+        super().__init__()
+        self.up_scale = up_scale
+        self.patch_size = patch_size
+        self.upscale_img = nn.Sequential(
+            nn.Conv2d(d_model, d_model, 3, padding=1),
+            nn.BatchNorm2d(d_model),
+            nn.Upsample(scale_factor=up_scale,
+                        mode='bilinear', align_corners=False),
+            nn.Conv2d(d_model, d_model, 3, padding=1),
+            nn.BatchNorm2d(d_model),
+        )
+
+        self.point_reg = nn.Linear(d_model, n_points)
+        self.heatmap_rec = nn.Sequential(
+            nn.Conv2d(d_model, 4, 3, padding=1),
+            nn.Sigmoid()
+        )
+        self.edge_rec = nn.Sequential(
+            nn.Conv2d(d_model, 1, 3, padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor]:
+        cls_token, img_token = x
+
+        # process img_token from
+        _, b, d = img_token.shape
+        img_token = img_token.permute(1, 2, 0).reshape(
+            b, d, self.patch_size, self.patch_size)
+        img_token = self.upscale_img(img_token)
+
+        # img_token = img_token.transpose(0, 1) # t,b,d -> b,t,d
+        # img_token = self.upscale_img(img_token) # b,t,d -> b,t,d*scale*scale
+        # img_token = img_token.transpose(1, 2) # b,t,d*scale*scale -> b,d*scale*scale,t
+        # img_token = img_token.reshape(
+        #     b, d, self.up_scale, self.up_scale, self.patch_size, self.patch_size) # b,d*scale*scale,t -> b,d,scale,scale,patch_size,patch_size
+        # img_token = img_token.permute(0, 1, 4, 2, 5, 3)
+        # img_token = img_token.reshape(
+        #     b, d, self.patch_size * self.up_scale, self.patch_size * self.up_scale)
+        # img_token = self.norm(img_token)
+
+        # auxillary branch
+        heatmap = self.heatmap_rec(img_token)
+        edge = self.edge_rec(img_token).squeeze(1)
+
+        # main prediction branch
+        cls_token = cls_token.transpose(0, 1).squeeze(1)
+        points = self.point_reg(cls_token)
+
+        return points, heatmap, edge

@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from shapely.geometry import Polygon as _Polygon
 from tabulate import tabulate
 
 from .component import *
@@ -50,6 +49,7 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
 
         # Setup loss function
         self.loss_fn = DT.WeightedAWingLoss()
+        self.loss_point = nn.SmoothL1Loss(beta=1)
 
         # for validation
         self.validation_step_outputs = []
@@ -61,19 +61,25 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        imgs, _, _, edges, edges_masks, kps, kps_masks = batch
-        preds_kps, preds_edges = self.forward(imgs)
-        loss_kps = self.loss_fn(preds_kps, kps, kps_masks)
-        loss_edge = self.loss_fn(preds_edges, edges, edges_masks)
-        loss = loss_kps + loss_edge
+        imgs, _, polys, edges, edges_masks, hmaps, hmaps_masks = batch
+        pred_points, pred_hmaps, pred_edges = self.forward(imgs)
+        pred_points = pred_points.reshape(-1, 4, 2)
+
+        loss_hmaps = self.loss_fn(pred_hmaps, hmaps, hmaps_masks)
+        loss_edge = self.loss_fn(pred_edges, edges, edges_masks)
+        loss_points = self.loss_point(pred_points, polys)
+        loss = loss_points * 100 + loss_edge + loss_hmaps
 
         if batch_idx % self.preview_batch == 0:
-            self.preview(batch_idx, imgs, kps, preds_kps, edges, preds_edges)
+            self.preview(batch_idx, imgs, polys, pred_points,
+                         hmaps, pred_hmaps, edges, pred_edges)
 
         self.log_dict(
             {
                 'lr': self.get_lr(),
-                'loss': loss,
+                'l_point': loss_points,
+                'l_edge': loss_edge,
+                'l_hmaps': loss_hmaps,
             },
             prog_bar=True,
             on_step=True,
@@ -81,39 +87,22 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
 
         return loss
 
-    @ staticmethod
-    def _get_point_with_max_area(mask):
-        polygons = D.Polygons.from_image(mask).drop_empty()
-        if len(polygons) > 0:
-            polygons = polygons[polygons.area == polygons.area.max()]
-        return polygons.centroid.flatten().tolist()
-
     def validation_step(self, batch, batch_idx):
         imgs, polys, doc_types = batch
-        preds_kps, *_ = self.forward(imgs)
-
-        imgs = imgs.detach().cpu().numpy()
-        polys = polys.detach().cpu().numpy()
-        preds_kps = preds_kps.detach().cpu().numpy()
+        preds, *_ = self.forward(imgs)
+        pred_polys = preds.reshape(-1, 4, 2)
 
         mask_ious = []
-        for img, gt, preds in zip(imgs, polys, preds_kps):
-            h, w = img.shape[1:3]
-            pred_polygons = []
-            for pred in preds:
-                pred[pred < 0.3] = 0
-                pred = np.uint8(pred * 255)
-                pred = D.imresize(pred, size=(h, w))
-                point = self._get_point_with_max_area(pred)
-                if len(point) == 2:
-                    pred_polygons.append(point)
-            pred_polygons = np.array(pred_polygons)
-            gt = D.Polygon(gt, normalized=True).denormalize(w, h).numpy()
-
-            if len(pred_polygons) != 4:
-                mask_ious.append(0)
-            else:
-                mask_ious.append(self.mask_iou(pred_polygons, gt))
+        for pred, gt in zip(pred_polys, polys):
+            pred = pred.detach().cpu().numpy()
+            gt = gt.detach().cpu().numpy()
+            pred = D.Polygon(pred, normalized=True) \
+                .denormalize(1920, 1080).numpy()
+            pred = D.order_points_clockwise(pred)
+            gt = D.Polygon(gt, normalized=True) \
+                .denormalize(1920, 1080).numpy()
+            gt = D.order_points_clockwise(gt)
+            mask_ious.append(self.mask_iou(pred, gt))
 
         self.validation_step_outputs.append((mask_ious, doc_types))
 
@@ -158,8 +147,6 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
     def mask_iou(self, pred_poly: np.ndarray, gt_poly: np.ndarray):
         # 設定 SmartDoc 資料集影像的尺寸
         doc_h, doc_w = 2970, 2100
-        doc_h = int(doc_h * (256 / 1080))
-        doc_w = int(doc_w * (256 / 1920))
         return D.jaccard_index(pred_poly, gt_poly, (doc_h, doc_w))
 
     @ property
@@ -170,7 +157,8 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
             img_path.mkdir(parents=True)
         return img_path
 
-    def preview(self, batch_idx, imgs, kps, preds_kps, edges, preds_edges, suffix='train'):
+    def preview(self, batch_idx, imgs, polys, pred_polys, hmaps, preds_hmaps,
+                edges, preds_edges, suffix='train'):
 
         # setup preview dir
         preview_dir = self.preview_dir / f'{suffix}_batch_{batch_idx}'
@@ -178,24 +166,26 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
             preview_dir.mkdir(parents=True)
 
         imgs = imgs.detach().cpu().numpy()
-        kps = kps.detach().cpu().numpy()
-        preds_kps = preds_kps.detach().cpu().numpy()
+        polys = polys.detach().cpu().numpy()
+        pred_polys = pred_polys.reshape(-1, 4, 2).detach().cpu().numpy()
+        hmaps = hmaps.detach().cpu().numpy()
+        preds_hmaps = preds_hmaps.detach().cpu().numpy()
         edges = edges.detach().cpu().numpy()
         preds_edges = preds_edges.detach().cpu().numpy()
 
-        for idx, (img, kp, pred_kp, edge, preds_edge) in \
-                enumerate(zip(imgs, kps, preds_kps, edges, preds_edges)):
+        for idx, (img, poly, pred_poly, hmap, pred_hmap, edge, preds_edge) in \
+                enumerate(zip(imgs, polys, pred_polys, hmaps, preds_hmaps, edges, preds_edges)):
             img = np.uint8(np.transpose(img, (1, 2, 0)) * 255)
 
             heatmap_gt = np.zeros_like(img)
             colors = [(255, 255, 0), (0, 255, 0), (0, 0, 255),
                       (0, 255, 255), (255, 0, 255), (255, 0, 0)]
-            for hmap, color in zip(kp, colors):
-                hmap = np.uint8(255 * hmap)
-                hmap = D.imresize(hmap, size=(img.shape[0], img.shape[1]))
-                hmap = cv2.applyColorMap(hmap, cv2.COLORMAP_BONE)
-                hmap[..., np.argwhere(np.array(color) == 0)] = 0
-                heatmap_gt = cv2.addWeighted(heatmap_gt, 1, hmap, 1, gamma=0)
+            for _hmap, color in zip(hmap, colors):
+                _hmap = np.uint8(255 * _hmap)
+                _hmap = D.imresize(_hmap, size=(img.shape[0], img.shape[1]))
+                _hmap = cv2.applyColorMap(_hmap, cv2.COLORMAP_BONE)
+                _hmap[..., np.argwhere(np.array(color) == 0)] = 0
+                heatmap_gt = cv2.addWeighted(heatmap_gt, 1, _hmap, 1, gamma=0)
 
             edge = np.uint8(edge * 255)
             edge = D.imresize(edge, size=(img.shape[0], img.shape[1]))
@@ -203,13 +193,13 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
             img_output1 = cv2.addWeighted(heatmap_gt, 1, edge, 0.5, gamma=0)
 
             heatmap_pred = np.zeros_like(img)
-            for hmap, color in zip(pred_kp, colors):
-                hmap = np.uint8(255 * hmap)
-                hmap = D.imresize(hmap, size=(img.shape[0], img.shape[1]))
-                hmap = cv2.applyColorMap(hmap, cv2.COLORMAP_BONE)
-                hmap[..., np.argwhere(np.array(color) == 0)] = 0
+            for _hmap, color in zip(pred_hmap, colors):
+                _hmap = np.uint8(255 * _hmap)
+                _hmap = D.imresize(_hmap, size=(img.shape[0], img.shape[1]))
+                _hmap = cv2.applyColorMap(_hmap, cv2.COLORMAP_BONE)
+                _hmap[..., np.argwhere(np.array(color) == 0)] = 0
                 heatmap_pred = cv2.addWeighted(
-                    heatmap_pred, 1, hmap, 1, gamma=0)
+                    heatmap_pred, 1, _hmap, 1, gamma=0)
 
             preds_edge = np.uint8(preds_edge * 255)
             preds_edge = D.imresize(
@@ -218,7 +208,18 @@ class DocAlignerModel(DT.BaseMixin, L.LightningModule):
             img_output2 = cv2.addWeighted(
                 heatmap_pred, 1, preds_edge, 0.5, gamma=0)
 
+            poly = D.Polygon(poly, normalized=True).denormalize(
+                *img.shape[:2][::-1])
+            pred_poly = D.Polygon(pred_poly, normalized=True).denormalize(
+                *img.shape[:2][::-1])
+            img_poly1 = D.draw_polygon(
+                img.copy(), poly, color=(0, 255, 0), thickness=2)
+            img_poly2 = D.draw_polygon(
+                img.copy(), pred_poly, color=(0, 0, 255), thickness=2)
+            img_poly = np.concatenate([img, img_poly1, img_poly2], axis=1)
+
             img_output = np.concatenate(
                 [img, img_output1, img_output2], axis=1)
+            img_output = np.concatenate([img_poly, img_output], axis=0)
             img_output_name = str(preview_dir / f'{idx}.jpg')
             D.imwrite(img_output, img_output_name)
