@@ -305,9 +305,17 @@ Let's now break down the training process step-by-step.
 
 ---
 
-Before we start, we understand that you might have the budget but not enough time to contemplate how to make custom adjustments for your on-site environment. Therefore, you can also directly contact us for consultation. Based on your budget and the complexity of the task, we can arrange engineers to undertake custom development for you.
+Before we start, we understand that you may have the budget, but not enough time to customize your on-site environment.
 
-For more assistance, please contact us via email: **docsaidlab@gmail.com**
+Therefore, you can also contact us directly for consultation. Based on the difficulty of your project, we can arrange for engineers to conduct customized development.
+
+A direct and specific example is:
+
+If you need to capture a certain type of text in a specific angle and light source, and find that the model we provide does not perform well, you can contact us and provide some data you have collected. We can directly force the model to fit on your dataset. This method can significantly improve the model's performance, but it requires a lot of time and manpower, so we will provide a reasonable quote based on your needs.
+
+Additionally, if you are not in a hurry, you can directly provide us with your text or scene dataset. We will include your dataset in our test datasets in future versions and offer better model performance in future releases. This method is completely free for you.
+
+If you need more help, please contact us via email: **docsaidlab@gmail.com**
 
 ---
 
