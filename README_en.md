@@ -10,11 +10,17 @@
 
 ## Introduction
 
-This project is a visual system focused on the localization of documents in the image. Our primary aim for this system is to provide predictions of the four corners of documents. This feature is critically important in applications dealing with fintech, banking, and the shared economy, offering a reduction in errors and computational requirements for various image processing and text analysis tasks.
-
 <div align="center">
     <img src="./docs/title.jpg" width="800">
 </div>
+
+This project aims to develop a visual system specifically for the precise localization of documents within images. Our primary goal is to accurately predict the positions of the four corners of a document. This technology is particularly applicable in industries such as fintech, banking, and the sharing economy, as it significantly reduces the error rate and computational demands of image processing and text analysis tasks.
+
+The core functionality of this system is known as "Document Localization." Our models are specifically designed to identify documents in images and flatten them for subsequent text recognition or other processing tasks. We offer two different models: the "Heatmap Model" and the "Point Regression Model," each with its characteristics and suitable applications, which will be detailed in subsequent sections.
+
+Technically, we have chosen PyTorch as our training framework and ONNXRuntime for model inference, enabling efficient operation of our models on both CPUs and GPUs. Additionally, we support converting our models into the ONNX format for convenient deployment on various platforms. For scenarios requiring quantization, we provide a static quantization model function based on the ONNXRuntime API.
+
+Our models achieve near state-of-the-art (SoTA) performance and demonstrate real-time inference speeds in practical applications, meeting the needs of most usage scenarios.
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -45,10 +51,34 @@ This project is a visual system focused on the localization of documents in the 
 - [Building the Training Environment](#building-the-training-environment)
 - [Running Training (Based on Docker)](#running-training-based-on-docker)
 - [Convert to ONNX Format](#convert-to-onnx-format)
+- [Dataset Submission](#dataset-submission)
+- [Frequently Asked Questions (FAQs)](#frequently-asked-questions-faqs)
 
 ---
 
-## Installation
+## Before We Begin
+
+Based on the models we provide, we believe we can address most application scenarios. However, we recognize that some situations may require better model performance, necessitating the collection of specific datasets for model fine-tuning. We understand that you might have the budget but not the time to customize your on-site environment. Therefore, you can contact us directly for consultation. Depending on the complexity of your project, we can arrange for engineers to develop custom solutions for you.
+
+Here's a specific example:
+
+Suppose you need to extract text from a specific angle and lighting condition, and you find that our provided model does not perform well. In this case, you can contact us and provide some of the data you've collected. We can then tailor the model to fit your dataset directly. This approach can significantly improve the model's performance, but it requires a considerable amount of time and manpower. Therefore, we will provide a reasonable quote based on your needs.
+
+Alternatively, if you are not in a hurry, **you can directly provide us with your dataset**. We will include your dataset in our test datasets in a future version (without a set timeline) to enhance the model's performance in subsequent releases. This option is entirely free for you.
+
+- **Please note: We will never open-source the data you provide unless you specifically request it. Normally, the data is only used for model updates.**
+
+We are delighted if you choose the second option, as it helps us improve our model, benefiting a broader audience.
+
+For instructions on how to submit your dataset, please see: [**Dataset Submitting**](#dataset-submission).
+
+Contact us at: **docsaidlab@gmail.com**
+
+---
+
+## Quick Start
+
+### Installation
 
 Currently, we do not offer an installation package on Pypi. To use this project, you can directly clone it from Github and then install the necessary dependencies. Before proceeding with the installation, please ensure that you have [DocsaidKit](https://github.com/DocsaidLab/DocsaidKit) installed.
 
@@ -84,13 +114,11 @@ Once the installation is complete, you can start using the project.
 
 ---
 
-## Quick Start
+### Import Necessary Dependencies
 
 We provide a simple model inference interface, which includes pre-processing and post-processing logic.
 
 First, you need to import the required dependencies and create a DocAligner class.
-
-### Import Necessary Dependencies
 
 ```python
 import docsaidkit as D
@@ -261,29 +289,62 @@ where $` \text{area}(G0 \cap S0) `$ is defined as the intersection polygon of th
 
 ### Evaluation Results
 
-The current model's performance has not yet reached the scores of state-of-the-art (SoTA) models, but it can already meet the needs of most application scenarios.
-
-For instance, the `PointRec-256` model, with a current development scale of 6 MB and computational requirement of approximately 1.2 GFLOPs, can run on various devices, including mobile phones and embedded devices.
-
-The `PointRec-512` model, while having the same model size, has double the input image resolution, thus quadrupling the computational requirement to about 5.0 GFLOPs.
-
-We believe that training methods and dataset compositions are significant factors affecting model performance. Therefore, we will continue to update our models and provide more datasets to enhance the models' effectiveness.
+<div align="center">
 
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **PointRec-512 (Ours)** |  **0.9821** |  **0.9798** |  **0.9831** |  **0.9753** |  **0.9055** |  **0.9727**|
-| **PointRec-256 (Ours)** |  **0.9681** |  **0.9597** |  **0.9720** |  **0.9597** |  **0.8864** |  **0.9571**|
+| **HeatmapRec-LC100-256 (Ours)** |  **0.9908** |  **0.9877** |  **0.9905** |  **0.9894** |  **0.9854** |  **0.9892**|
 | - | - | - | - | - | - | - |
-| HU-PageScan | - | - | - | - | - | 0.9923 |
-| Advanced Hough |  0.9886 |  0.9858 |  0.9896 |  0.9806 |  - |  0.9866 |
-| LDRNet | 0.9877 | 0.9838 | 0.9862 | 0.9802 | 0.9858 | 0.9849 |
-| Coarse-to-Fine |  0.9876 |  0.9839 |  0.9830 |  0.9843 |  0.9614 |  0.9823 |
-| SEECS-NUST-2 |  0.9832 |  0.9724 |  0.9830 |  0.9695 |  0.9478 |  0.9743 |
-| LDRE | 0.9869 | 0.9775 | 0.9889 | 0.9837 | 0.8613 | 0.9716 |
-| SmartEngines |  0.9885 |  0.9833 |  0.9897 |  0.9785 |  0.6884 |  0.9548 |
-| NetEase |  0.9624 |  0.9552 |  0.9621 |  0.9511 |  0.2218 |  0.8820 |
-| RPPDI-UPE |  0.8274 |  0.9104 |  0.9697 |  0.3649 |  0.2162 |  0.7408 |
-| SEECS-NUST |  0.8875 |  0.8264 |  0.7832 |  0.7811 |  0.0113 |  0.7393 |
+| HU-PageScan [1] | - | - | - | - | - | 0.9923 |
+| Advanced Hough [2] |  0.9886 |  0.9858 |  0.9896 |  0.9806 |  - |  0.9866 |
+| LDRNet [4] | 0.9877 | 0.9838 | 0.9862 | 0.9802 | 0.9858 | 0.9849 |
+| Coarse-to-Fine [3] |  0.9876 |  0.9839 |  0.9830 |  0.9843 |  0.9614 |  0.9823 |
+| SEECS-NUST-2 [3] |  0.9832 |  0.9724 |  0.9830 |  0.9695 |  0.9478 |  0.9743 |
+| LDRE [5] | 0.9869 | 0.9775 | 0.9889 | 0.9837 | 0.8613 | 0.9716 |
+| SmartEngines [5] |  0.9885 |  0.9833 |  0.9897 |  0.9785 |  0.6884 |  0.9548 |
+| NetEase [5] |  0.9624 |  0.9552 |  0.9621 |  0.9511 |  0.2218 |  0.8820 |
+| RPPDI-UPE [5] |  0.8274 |  0.9104 |  0.9697 |  0.3649 |  0.2162 |  0.7408 |
+| SEECS-NUST [5] |  0.8875 |  0.8264 |  0.7832 |  0.7811 |  0.0113 |  0.7393 |
+
+</div>
+
+1. **HU-PageScan** is a pixel classification-based segmentation model known for its good performance. However, its large size and computational demand, along with architectural limitations, reduce its resistance to partially occluded patterns, such as scenarios where fingers are holding the edges of a page. This makes it less suitable for practical applications.
+    - Paper: [HU-PageScan: a fully convolutional neural network for document page crop](https://ietresearch.onlinelibrary.wiley.com/doi/full/10.1049/iet-ipr.2020.0532) (Feb 2021)
+    - Github: [HU-PageScan](https://github.com/ricardobnjunior/HU-PageScan)
+
+2. **Advanced Hough** is a CV-Based model with notable performance. However, like all CV-Based models, it has certain drawbacks, such as sensitivity to lighting and angles.
+    - Paper: [Advanced Hough-based method for on-device document localization](https://www.computeroptics.ru/KO/PDF/KO45-5/450509.pdf) (June 2021)
+    - Github:  [hough_document_localization](https://github.com/SmartEngines/hough_document_localization)
+
+3. **Coarse-to-Fine** and **SEECS-NUST-2** are deep learning-based models that employ recursive optimization strategies. They perform well but are relatively slow.
+    - Paper: [Real-time Document Localization in Natural Images by Recursive Application of a CNN](https://khurramjaved.com/RecursiveCNN.pdf) (Nov 2017)
+    - Paper: [Coarse-to-fine document localization in natural scene image with regional attention and recursive corner refinement](https://sci-hub.et-fine.com/10.1007/s10032-019-00341-0) (July 2019)
+    - Github:  [Recursive-CNNs](https://github.com/KhurramJaved96/Recursive-CNNs)
+
+4. **LDRNet** is a deep learning-based model. Testing with the model provided by its creators showed that it is entirely fitted to the SmartDoc 2015 dataset and lacks generalizability to other scenarios. Attempts to incorporate additional data for training did not yield satisfactory results, possibly due to the architecture's insufficient capability for feature fusion.
+    - Paper: [LDRNet: Enabling Real-time Document Localization on Mobile Devices](https://arxiv.org/abs/2206.02136) (June 2022)
+    - Github:  [LDRNet](https://github.com/niuwagege/LDRNet)
+
+5. Models such as **LDRE**, **SmartEngines**, **NetEase**, **RPPDI-UPE**, and **SEECS-NUST** are all based on CV-Based approaches.
+    - Paper: [ICDAR2015 Competition on Smartphone Document Capture and OCR (SmartDoc)](https://marcalr.github.io/pdfs/ICDAR15e.pdf) (Nov 2015)
+    - Github:  [smartdoc15-ch1-dataset](https://github.com/jchazalon/smartdoc15-ch1-dataset)
+
+---
+
+### Analysis of Results
+
+- Although our model can achieve near state-of-the-art (SoTA) scores, real-world scenarios are much more complex than this dataset. Therefore, it's not necessary to focus too much on these scores. Our aim is to demonstrate the effectiveness of our model.
+
+- We have endeavored to minimize the size and computational requirements of our model. However, in our experiments, we found that the model's zero-shot capabilities are limited. This means that for new scenes, the model requires fine-tuning to achieve optimal performance.
+
+- Our testing revealed that while the "point regression model" can achieve better evaluation scores, the heatmap model provides more stable results in practical applications. Therefore, we still recommend using the heatmap model.
+
+- We cannot disregard the advantages of the "point regression model", which include but are not limited to the ability to predict corners outside the image frame and a fast and straightforward post-processing workflow. Hence, we will continue to optimize the "point regression model" to enhance its performance.
+
+- HeatmapRec-LC100-256:
+    - parameters: about 1.2 million
+    - FP32 model file size: about 4.9 MB
+    - computational: about 1.6 FLOPs(G)。
 
 ---
 
@@ -305,17 +366,35 @@ Let's now break down the training process step-by-step.
 
 ---
 
-Before we start, we understand that you may have the budget, but not enough time to customize your on-site environment.
+## Model Architecture Design
 
-Therefore, you can also contact us directly for consultation. Based on the difficulty of your project, we can arrange for engineers to conduct customized development.
+### Heatmap Regression Model
 
-A direct and specific example is:
+<div align="center">
+    <img src="./docs/hmap_model_arch.jpg" width="800">
+</div>
 
-If you need to capture a certain type of text in a specific angle and light source, and find that the model we provide does not perform well, you can contact us and provide some data you have collected. We can directly force the model to fit on your dataset. This method can significantly improve the model's performance, but it requires a lot of time and manpower, so we will provide a reasonable quote based on your needs.
+- **Backbone: LCNet-100**
 
-Additionally, if you are not in a hurry, you can directly provide us with your text or scene dataset. We will include your dataset in our test datasets in future versions and offer better model performance in future releases. This method is completely free for you.
+    The Backbone serves as the main body of the model, responsible for extracting features from the input data.
 
-If you need more help, please contact us via email: **docsaidlab@gmail.com**
+    In this model, LCNet-100 is utilized, a lightweight convolutional neural network that is especially effective for efficient feature extraction in environments with limited computational resources. We expect LCNet-100 to extract sufficient feature information from the input data, preparing the groundwork for subsequent heatmap regression.
+
+- **Neck: BiFPN**
+
+    The Neck is used to enhance the features flowing from the Backbone.
+
+    BiFPN (Bidirectional Feature Pyramid Network) enhances the feature representation by facilitating bidirectional flow of contextual information. We anticipate that BiFPN will produce a series of scale-rich and semantically strong feature maps. These feature maps are particularly effective for capturing objects at various scales and are expected to positively impact the final prediction accuracy.
+
+- **Head: Heatmap Regression**
+
+    The Head is the final stage of the model, specifically designed to make final predictions based on the features extracted and enhanced earlier.
+
+    In this model, heatmap regression technique is employed. It is a common method in object detection and pose estimation, capable of accurately predicting object locations. Heatmap regression will generate a heatmap representation of objects, indicating the likelihood of object presence at different locations. By analyzing these heatmaps, the model can accurately predict the position and posture of objects.
+
+### Point Regression Model
+
+Still under testing...
 
 ---
 
@@ -523,36 +602,76 @@ import docsaidkit as D
 import docsaidkit.torch as DT
 import albumentations as A
 
+DIR = D.get_curdir(__file__)
+
+ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
+
+bg_dataset = []
+for data in D.Tqdm(ds):
+    img_path = D.Path('/data/Dataset') / data['img_path']
+    if D.imread(img_path) is None:
+        continue
+    bg_dataset.append(img_path)
+
+
 class DefaultImageAug:
 
     def __init__(self, p=0.5):
         self.coarse_drop_aug = DT.CoarseDropout(
-            max_holes=1, max_height=64, max_width=64, p=p)
+            max_holes=1,
+            min_height=24,
+            max_height=48,
+            min_width=24,
+            max_width=48,
+            mask_fill_value=255,
+            p=p
+        )
         self.aug = A.Compose([
+
             DT.ShiftScaleRotate(
-                shift_limit=0.2,
-                scale_limit=[-0.4, 0.2],
-                border_mode=cv2.BORDER_CONSTANT),
-            A.MotionBlur(),
-            A.GaussNoise(),
-            A.ColorJitter(),
-            A.ChannelShuffle(),
-            A.HorizontalFlip(),
-            A.VerticalFlip(),
-            A.RandomRotate90(),
-            A.Perspective(),
-            A.GaussianBlur(blur_limit=(7, 11), p=0.5),
+                shift_limit=0.1,
+                scale_limit=[-0.2, 0]
+            ),
+
+            A.OneOf([
+                A.Spatter(mode='mud'),
+                A.GaussNoise(),
+                A.ISONoise(),
+                A.MotionBlur(),
+                A.Defocus(),
+                A.GaussianBlur(blur_limit=(3, 11), p=0.5),
+            ], p=p),
+
+            A.OneOf([
+                A.HorizontalFlip(),
+                A.VerticalFlip(),
+                A.RandomRotate90(),
+            ], p=p),
+
+            A.OneOf([
+                A.ColorJitter(),
+                A.ChannelShuffle(),
+                A.ChannelDropout(),
+                A.RGBShift(),
+            ])
+
         ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
-        img = self.coarse_drop_aug(image=image)['image']
+        mask = np.zeros_like(image)
+        img, mask = self.coarse_drop_aug(image=image, mask=mask).values()
+        background = bg_dataset[np.random.randint(len(bg_dataset))]
+        background = D.imread(background)
+        background = D.imresize(background, (image.shape[0], image.shape[1]))
+        if mask.sum() > 0:
+            img[mask > 0] = background[mask > 0]
         img, kps = self.aug(image=img, keypoints=keypoints).values()
         kps = D.order_points_clockwise(np.array(kps))
         return img, kps
 ```
 
 - **CoarseDropout**
-   - This augmentation technique randomly generates a rectangular area in the image and sets the pixel values in that area to 0. It can simulate occlusions in images, such as when text is obscured by other objects.
+   - This augmentation technique randomly generates a rectangular area in the image and sets the random background in that area. It can simulate occlusions in images, such as when text is obscured by other objects.
 
 - **GaussianBlur**
     - This technique applies Gaussian blur to the image. It can simulate Gaussian blur during image capture and blur sharp edge features in synthetic images, making them look more like real images.
@@ -748,3 +867,81 @@ bash DocAligner/docker/to_onnx.bash lcnet100_point_reg_bifpn # Replace this with
 ```
 
 At this point, you will see a new ONNX model in the `DocAligner/model` directory. Move this model to the corresponding inference model directory in `docaligner/xxx` to perform inference.
+
+---
+
+## Dataset Submission
+
+We greatly appreciate your willingness to provide a dataset for integration and testing. Here's how to format your submission:
+
+**Example Dataset Format**:
+
+<div align="center">
+    <img src="./docs/example_dataset.jpg" width="500">
+</div>
+
+As you can see, you should have a dataset containing the images you've collected, along with a `gt.json` file in the same directory. This file should include labels for each image.
+
+**Required Label Format**:
+
+1. Image Relative Path
+2. Polygon boundaries of the document's 'four corners' in the image
+
+    ```json
+    [
+        {
+            "file_path": "path/to/your/image.jpg",
+            "polygon": [
+                [
+                    [0, 0],
+                    [0, 1080],
+                    [1920, 1080],
+                    [1920, 0]
+                ]
+            ]
+        }
+    ]
+    ```
+
+Please note that while the above data format and naming conventions are not strict, they should generally include the image path and polygon boundaries. To facilitate our testing, please try to follow the format as closely as possible.
+
+We recommend using [LabelMe](https://github.com/labelmeai/labelme), an open-source labeling tool that can help you quickly label images and export them as JSON files.
+
+We suggest uploading your data to Google Drive and sharing the link with us via [email](docsaidlab@gmail.com). We will promptly test and integrate your data upon receipt. If your data does not meet our requirements, we will notify you as soon as possible.
+
+**Possible Reasons for Non-compliance**:
+- **Insufficient Data Accuracy**: If some images in your dataset are inaccurately labeled or have incorrect labels.
+- **Unclear Labeling Objectives**: Our focus is on locating the four corners of documents in images. If your data contains more than one target or more than four corners, it cannot be used.
+- **Too Small Targets**: If the objects in your dataset are too small, you might need to reconsider your algorithm choice, as our model is not suited for processing small objects and does not align with our goals for ease of post-processing.
+- **Overly Refined Dataset Scale**: Even if you provide only a few dozen images, we will accept them. However, using such data to fit the model could lead to overfitting, so we recommend increasing the dataset size to avoid this issue.
+
+---
+
+## Frequently Asked Questions (FAQs):
+
+1. **Is the order of the four corners important?**
+   - No, it's not important. Our training process automatically sorts these corners.
+
+2. **What are the requirements for the label format?**
+   - The format is not strictly defined; it only needs to include the image path and the polygon boundaries. However, for ease of testing, we recommend adhering to a standard format as much as possible.
+
+3. **How important is the file name?**
+   - The file name is not a primary concern, as long as it correctly links to the corresponding image.
+
+4. **Any recommendations for the image format?**
+   - We suggest using the jpg format to save space.
+
+5. **How does the accuracy of labels affect model training?**
+   - The accuracy of the labels is extremely important. Inaccurate labels will directly impact the effectiveness of the model training.
+
+6. **Is the type of object in the labels important?**
+   - Yes, it's very important.
+   - The object must be a document, and there should only be one object per image.
+
+7. **How does the size of the object affect model training?**
+   - The size of the object is important. Our model is not suitable for processing small objects, as this affects the efficiency of subsequent processing.
+
+8. **How is a 'small object' defined?**
+   - For an image with a resolution of 1920x1080, an object smaller than 32 x 32 pixels is considered a small object. The specific calculation formula is `min(img_w, img_h) / 32`.
+
+For further assistance, please contact us via email at **docsaidlab@gmail.com**
