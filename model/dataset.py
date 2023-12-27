@@ -11,26 +11,58 @@ from numpy import ndarray
 
 DIR = D.get_curdir(__file__)
 
+ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
+
+bg_dataset = []
+for data in D.Tqdm(ds):
+    img_path = D.Path('/data/Dataset') / data['img_path']
+    if D.imread(img_path) is None:
+        continue
+    bg_dataset.append(img_path)
+
+
+def check_boundary(img: Union[str, Path, np.ndarray], poly: np.ndarray):
+
+    if isinstance(img, (str, Path)):
+        img = D.imread(img)
+
+    if img is None:
+        return False
+
+    poly = np.array(poly).reshape(-1, 2)
+    if poly[:, 0].max() > img.shape[1] or poly[:, 1].max() > img.shape[0]:
+        return False
+    if poly[:, 0].min() < 0 or poly[:, 1].min() < 0:
+        return False
+
+    return True
+
 
 class DefaultImageAug:
 
     def __init__(self, p=0.5):
         self.coarse_drop_aug = DT.CoarseDropout(
-            max_holes=1, max_height=64, max_width=64, p=p)
+            max_holes=1,
+            min_height=24,
+            max_height=48,
+            min_width=24,
+            max_width=48,
+            mask_fill_value=255,
+            p=p
+        )
         self.aug = A.Compose([
 
-            A.OneOf([
-                DT.ShiftScaleRotate(
-                    shift_limit=0.2,
-                    scale_limit=[-0.6, 0.2]
-                ),
-                A.Perspective(),
-            ], p=p),
+            DT.ShiftScaleRotate(
+                shift_limit=0.1,
+                scale_limit=[-0.2, 0]
+            ),
 
             A.OneOf([
+                A.Spatter(mode='mud'),
                 A.GaussNoise(),
                 A.ISONoise(),
                 A.MotionBlur(),
+                A.Defocus(),
                 A.GaussianBlur(blur_limit=(3, 11), p=0.5),
             ], p=p),
 
@@ -50,7 +82,13 @@ class DefaultImageAug:
         ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
-        img = self.coarse_drop_aug(image=image)['image']
+        mask = np.zeros_like(image)
+        img, mask = self.coarse_drop_aug(image=image, mask=mask).values()
+        background = bg_dataset[np.random.randint(len(bg_dataset))]
+        background = D.imread(background)
+        background = D.imresize(background, (image.shape[0], image.shape[1]))
+        if mask.sum() > 0:
+            img[mask > 0] = background[mask > 0]
         img, kps = self.aug(image=img, keypoints=keypoints).values()
         kps = D.order_points_clockwise(np.array(kps))
         return img, kps
@@ -112,6 +150,10 @@ class BaseDataset:
 class MIDV500Dataset(BaseDataset):
 
     def _build(self):
+
+        if (fp := DIR.parent / 'data' / 'midv_dataset_500_cache.json').exists():
+            return D.load_json(fp)
+
         ds = D.load_json(DIR.parent / 'data' / 'midv_dataset.json')
         dataset = []
         for data in D.Tqdm(ds.values()):
@@ -119,7 +161,13 @@ class MIDV500Dataset(BaseDataset):
                 if D.Path(d['img_path']).parent.parent.parent.parent.stem == 'midv500':
                     img_path = self.root / d['img_path']
                     gt = D.load_json(self.root / d['gt_path'])['quad']
-                    dataset.append((img_path, gt))
+                    if check_boundary(img_path, gt):
+                        dataset.append((str(img_path), gt))
+
+        # Make a cache file
+        if not fp.exists():
+            D.dump_json(dataset, fp)
+
         return dataset
 
 
@@ -188,7 +236,7 @@ class SmartDocDataset(BaseDataset):
         self,
         mode: str = 'train',
         return_tensor: bool = False,
-        train_ratio: float = 0.75,
+        train_ratio: float = 1,
         *args, **kwargs
     ) -> None:
         self.return_tensor = return_tensor
@@ -416,24 +464,17 @@ class BackgroundDataset(BaseDataset):
         )
 
     def _build(self):
-        ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
-        dataset = []
-        for data in D.Tqdm(ds):
-            img_path = self.root / data['img_path']
-            if D.imread(img_path) is None:
-                continue
-            dataset.append(img_path)
-        return dataset
+        return bg_dataset
 
     def __getitem__(self, idx) -> Tuple[ndarray, ndarray]:
         idx = np.random.randint(len(self.dataset))
         img = D.imread(self.dataset[idx])
         img = self.random_resize_crop(image=img)['image']
         poly = np.array([
-            [0, 0],
-            [img.shape[1], 0],
-            [img.shape[1], img.shape[0]],
-            [0, img.shape[0]]
+            [-99, -99],
+            [-99, -99],
+            [-99, -99],
+            [-99, -99]
         ]).astype('float32')
         return img, poly
 
@@ -564,7 +605,7 @@ class DocAlignerDataset:
         edge_mask = D.imdilate(edge, ksize=self.edge_width) > 0
         return edge, edge_mask
 
-    def to_tensor(self, img, box, poly, edge, edge_mask, hmaps, hmaps_mask):
+    def to_tensor(self, img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj):
         poly = D.Polygon(poly).normalize(
             w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
         box = D.Box(box).normalize(
@@ -574,13 +615,15 @@ class DocAlignerDataset:
         edge_mask = edge_mask.astype('float32')
         hmaps = np.transpose(hmaps.astype('float32'), (2, 0, 1)) / 255.0
         hmaps_mask = np.transpose(hmaps_mask.astype('float32'), (2, 0, 1))
-        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask
+        has_obj = np.array([has_obj]).astype('float32')
+        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj
 
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
 
         if np.random.rand() < self.random_nodoc_ratio:
             # Generate background image from indoor dataset.
             img, poly = self.background_dataset[idx]
+            has_obj = False
         else:
             if self.random_output:
                 d_idx = np.random.randint(len(self.dataset))
@@ -589,6 +632,7 @@ class DocAlignerDataset:
                 d_idx, f_idx = self._find_position_in_list(
                     self.length_of_dataset, idx)
             img, poly = self.dataset[d_idx][f_idx]
+            has_obj = True
 
         hmaps, hmaps_mask = self._gen_gaussian_point(img, poly.astype('int32'))
         edge, edge_mask = self._gen_edge(img, poly.astype('int32'))
@@ -597,6 +641,6 @@ class DocAlignerDataset:
         box = D.Polygon(poly).to_box(box_mode='XYWH').numpy()
 
         if self.output_tensor:
-            return self.to_tensor(img, box, poly, edge, edge_mask, hmaps, hmaps_mask)
+            return self.to_tensor(img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj)
 
-        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask
+        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj

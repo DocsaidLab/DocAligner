@@ -40,11 +40,18 @@ class HeatmapEdgeRecHead(nn.Module):
             nn.Conv2d(in_c, 1, 3, padding=1),
             nn.Sigmoid()
         )
+        self.has_obj = nn.Sequential(
+            nn.Conv2d(in_c, in_c, 3, 2, 1),
+            nn.BatchNorm2d(in_c),
+            DT.GAP(),
+            nn.Linear(in_c, 1)
+        )
 
     def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
         heatmap = self.heatmap_rec(xs[0]).squeeze(1)
         edge = self.edge_rec(xs[0]).squeeze(1)
-        return heatmap, edge
+        has_obj = self.has_obj(xs[4])
+        return heatmap, edge, has_obj
 
 
 class HeatmapEdgePointRegDecoderHead(nn.Module):
@@ -76,7 +83,7 @@ class HeatmapEdgePointRegDecoderHead(nn.Module):
         nn.init.kaiming_uniform_(self.cls_token, a=math.sqrt(5))
 
         self.tokenizer_low = nn.Sequential(
-            DT.SeparableConvBlock(in_c, d_model, patch_size, patch_size),
+            nn.Conv2d(in_c, d_model, patch_size, patch_size),
             nn.Flatten(2),
             DT.Permute([2, 0, 1]),
             nn.LayerNorm(d_model)
@@ -93,7 +100,7 @@ class HeatmapEdgePointRegDecoderHead(nn.Module):
         )
 
         self.tokenizer_high = nn.Sequential(
-            DT.SeparableConvBlock(in_c, d_model),
+            nn.Conv2d(in_c, d_model, 1, 1, 0),
             nn.Flatten(2),
             DT.Permute([2, 0, 1]),
             nn.LayerNorm(d_model)
@@ -111,16 +118,29 @@ class HeatmapEdgePointRegDecoderHead(nn.Module):
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.point_reg = nn.Linear(d_model, num_points)
+        self.box_reg = nn.Linear(d_model, 4)
+        self.has_obj = nn.Sequential(
+            nn.Conv2d(d_model, d_model, 3, 2, 1),
+            nn.BatchNorm2d(d_model),
+            DT.GAP(),
+            nn.Linear(d_model, 1)
+        )
         self.heatmap_rec = nn.Sequential(
+            nn.Conv2d(in_c, in_c, 3, padding=1),
+            nn.BatchNorm2d(in_c),
             nn.Conv2d(in_c, 4, 3, padding=1),
             nn.Sigmoid()
         )
         self.edge_rec = nn.Sequential(
+            nn.Conv2d(in_c, in_c, 3, padding=1),
+            nn.BatchNorm2d(in_c),
             nn.Conv2d(in_c, 1, 3, padding=1),
             nn.Sigmoid()
         )
 
     def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+
+        has_obj = self.has_obj(xs[4])
 
         h_lavel_feat = self.tokenizer_high(xs[4])
         pos_emb_high = self.pos_emb_high.expand(-1, h_lavel_feat.size(1), -1)
@@ -130,17 +150,22 @@ class HeatmapEdgePointRegDecoderHead(nn.Module):
         query = self.decoder_high(query, h_lavel_feat)
         query = self.norm1(query)  # t, b, d
 
+        aux_points = self.point_reg(query.transpose(0, 1).squeeze(1))
+        aux_boxes = self.box_reg(query.transpose(0, 1).squeeze(1))
+
         l_level_feat = self.tokenizer_low(xs[0])
         pos_emb_low = self.pos_emb_low.expand(-1, l_level_feat.size(1), -1)
         l_level_feat = l_level_feat + pos_emb_low
         query = self.decoder_low(query, l_level_feat)
         query = self.norm2(query)
+
         points = self.point_reg(query.transpose(0, 1).squeeze(1))
+        boxes = self.box_reg(query.transpose(0, 1).squeeze(1))
 
         heatmap = self.heatmap_rec(xs[0]).squeeze(1)
         edge = self.edge_rec(xs[0]).squeeze(1)
 
-        return points, heatmap, edge
+        return points, heatmap, edge, has_obj, aux_points, boxes, aux_boxes
 
 
 class PointRegHead(nn.Module):

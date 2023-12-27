@@ -1,0 +1,160 @@
+common:
+  batch_size: 100
+  image_size: [256, 256]
+  is_restore: False
+  restore_ind: ""
+  restore_ckpt: ""
+  preview_batch: 1000
+
+global_settings:
+  image_size: [256, 256]
+
+trainer:
+  max_epochs: 100
+  precision: 32
+  val_check_interval: 1.0
+  gradient_clip_val: 5
+  accumulate_grad_batches: 1
+  accelerator: gpu
+  devices: [0]
+
+model:
+  name: HeatmapModel
+  backbone:
+    name: Backbone
+    options:
+      name: lcnet_050
+      pretrained: True
+      features_only: True
+      replace_components: True
+  neck:
+    name: bifpns
+    out_channels: 64
+    n_bifpn: 3
+  head:
+    name: HeatmapEdgeRecHead
+    options:
+      in_c: 64
+
+onnx:
+  name: WarpHeatmapReg
+  input_shape:
+    img:
+      shape: [1, 3, 256, 256]
+      dtype: float32
+  input_names: ['img']
+  output_names:
+    - heatmap
+  # dynamic_axes:
+  #   img:
+  #     '0': batch_size
+  #   output:
+  #     '0': batch_size
+  options:
+    opset_version: 16
+    verbose: False
+    do_constant_folding: True
+
+quantize:
+  do_quant: False
+  device: mobile
+  options:
+    quant_format: QOperator
+    per_channel: True
+    reduce_range: True
+    optimize_model: True
+    nodes_to_exclude: ["/heatmap_rec/heatmap_rec.1/Sigmoid"]
+
+dataset:
+  train_options:
+    name: DocAlignerDataset
+    options:
+      root: /data/Dataset
+      aug_ratio: 1
+      random_nodoc_ratio: 0.1
+      random_output: True
+      downscale: 2
+      length_of_dataset: 200000
+      fuse_dataset:
+        - name: MIDV500Dataset
+          options:
+            root: /data/Dataset
+        - name: MIDV2020Dataset
+          options:
+            root: /data/Dataset
+        - name: PrivateDataset
+          options:
+            root: /data/Dataset
+        - name: SmartDocDataset
+          options:
+            root: /data/Dataset
+            mode: train
+            train_ratio: 1
+        - name: SyncDataset
+          options:
+            use_midv500: True
+            use_midv2019: False
+            use_midv2020: True
+            use_cordv0: False
+            use_smartdoc: False
+            use_private: True
+  valid_options:
+    name: SmartDocDataset
+    options:
+      root: /data/Dataset
+      mode: val
+      return_tensor: True
+      train_ratio: 0
+
+dataloader:
+  train_options:
+    batch_size: -1
+    num_workers: 24
+    shuffle: False
+    drop_last: False
+  valid_options:
+    batch_size: -1
+    num_workers: 24
+    shuffle: False
+    drop_last: False
+
+optimizer:
+  name: AdamW
+  options:
+    lr: 1.0e-4
+    betas: [0.9, 0.999]
+    weight_decay: 0.01
+    amsgrad: False
+
+lr_scheduler:
+  name: "MultiStepLRWarmUp"
+  options:
+    warmup_milestone: 1000
+    milestones: [1000000, 2000000]
+    gamma: 0.316227766
+  pl_options:
+    monitor: loss
+    interval: step
+
+callbacks:
+  - name: ModelCheckpoint
+    options:
+      monitor: val_iou
+      mode: max
+      verbose: True
+      save_last: True
+      save_top_k: 5
+  - name: LearningRateMonitor
+    options:
+      logging_interval: step
+  - name: RichModelSummary
+    options:
+      max_depth: 3
+  - name: CustomTQDMProgressBar
+    options:
+      unit_scale: -1
+
+logger:
+  name: TensorBoardLogger
+  options:
+    save_dir: logger
