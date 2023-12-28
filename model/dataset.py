@@ -13,12 +13,16 @@ DIR = D.get_curdir(__file__)
 
 ds = D.load_json(DIR.parent / 'data' / 'indoor_dataset.json')
 
-bg_dataset = []
-for data in D.Tqdm(ds):
-    img_path = D.Path('/data/Dataset') / data['img_path']
-    if D.imread(img_path) is None:
-        continue
-    bg_dataset.append(img_path)
+if (DIR.parent / 'data' / 'indoor_dataset_cache.json').is_file():
+    bg_dataset = D.load_json(DIR.parent / 'data' / 'indoor_dataset_cache.json')
+else:
+    bg_dataset = []
+    for data in D.Tqdm(ds):
+        img_path = D.Path('/data/Dataset') / data['img_path']
+        if D.imread(img_path) is None:
+            continue
+        bg_dataset.append(str(img_path))
+    D.dump_json(bg_dataset, DIR.parent / 'data' / 'indoor_dataset_cache.json')
 
 
 def check_boundary(img: Union[str, Path, np.ndarray], poly: np.ndarray):
