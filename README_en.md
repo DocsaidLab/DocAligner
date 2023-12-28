@@ -23,56 +23,23 @@ Technically, we have chosen PyTorch as our training framework and ONNXRuntime fo
 Our models achieve near state-of-the-art (SoTA) performance and demonstrate real-time inference speeds in practical applications, meeting the needs of most usage scenarios.
 
 ## Table of Contents
+
 - [Introduction](#introduction)
 - [Table of Contents](#table-of-contents)
-- [Installation](#installation)
 - [Quick Start](#quick-start)
-    - [Import Necessary Dependencies](#import-necessary-dependencies)
-    - [ModelType](#modeltype)
-    - [Backend](#backend)
-    - [Create a DocAligner Instance](#create-a-docaligner-instance)
-    - [Read and Process Images](#read-and-process-images)
-    - [Output Results](#output-results)
-        - [Draw Document Polygon](#draw-document-polygon)
-        - [Get the Drawn numpy Image](#get-the-drawn-numpy-image)
-        - [Extract the Flattened Document Image](#extract-the-flattened-document-image)
-        - [Convert Document Information to JSON](#convert-document-information-to-json)
-        - [Example](#example)
+- [Benchmark](#benchmark)
+- [Before We start Training](#before-we-start-training)
+- [Training the Model](#training-the-model)
+- [Model Architecture Design](#model-architecture-design)
 - [Dataset](#dataset)
 - [Dataset Preprocessing](#dataset-preprocessing)
 - [Dataset Implementation](#dataset-implementation)
-    - [1. SmartDoc 2015 Dataset](#1-smartdoc-2015-dataset)
-    - [2. MIDV-500 Dataset](#2-midv-500-dataset)
-    - [3. MIDV-2019 Dataset](#3-midv-2019-dataset)
-    - [4. MIDV-2020 Dataset](#4-midv-2020-dataset)
-    - [5. CORD v0 Dataset](#5-cord-v0-dataset)
-    - [6. Synthetic Dataset](#6-synthetic-dataset)
-    - [7. Image Augmentation](#7-image-augmentation)
 - [Building the Training Environment](#building-the-training-environment)
 - [Running Training (Based on Docker)](#running-training-based-on-docker)
 - [Convert to ONNX Format](#convert-to-onnx-format)
 - [Dataset Submission](#dataset-submission)
 - [Frequently Asked Questions (FAQs)](#frequently-asked-questions-faqs)
-
----
-
-## Before We Begin
-
-Based on the models we provide, we believe we can address most application scenarios. However, we recognize that some situations may require better model performance, necessitating the collection of specific datasets for model fine-tuning. We understand that you might have the budget but not the time to customize your on-site environment. Therefore, you can contact us directly for consultation. Depending on the complexity of your project, we can arrange for engineers to develop custom solutions for you.
-
-Here's a specific example:
-
-Suppose you need to extract text from a specific angle and lighting condition, and you find that our provided model does not perform well. In this case, you can contact us and provide some of the data you've collected. We can then tailor the model to fit your dataset directly. This approach can significantly improve the model's performance, but it requires a considerable amount of time and manpower. Therefore, we will provide a reasonable quote based on your needs.
-
-Alternatively, if you are not in a hurry, **you can directly provide us with your dataset**. We will include your dataset in our test datasets in a future version (without a set timeline) to enhance the model's performance in subsequent releases. This option is entirely free for you.
-
-- **Please note: We will never open-source the data you provide unless you specifically request it. Normally, the data is only used for model updates.**
-
-We are delighted if you choose the second option, as it helps us improve our model, benefiting a broader audience.
-
-For instructions on how to submit your dataset, please see: [**Dataset Submitting**](#dataset-submission).
-
-Contact us at: **docsaidlab@gmail.com**
+- [Citation](#citation)
 
 ---
 
@@ -293,7 +260,8 @@ where $` \text{area}(G0 \cap S0) `$ is defined as the intersection polygon of th
 
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **HeatmapRec-LC100-256 (Ours)** |  **0.9908** |  **0.9877** |  **0.9905** |  **0.9894** |  **0.9854** |  **0.9892**|
+| HeatmapRec-LC100-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
+| HeatmapRec-LC050-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
 | - | - | - | - | - | - | - |
 | HU-PageScan [1] | - | - | - | - | - | 0.9923 |
 | Advanced Hough [2] |  0.9886 |  0.9858 |  0.9896 |  0.9806 |  - |  0.9866 |
@@ -346,6 +314,32 @@ where $` \text{area}(G0 \cap S0) `$ is defined as the intersection polygon of th
     - FP32 model file size: about 4.9 MB
     - computational: about 1.6 FLOPs(G)。
 
+- HeatmapRec-LC050-256:
+    - parameters: about 0.42 million
+    - FP32 model file size: about 1.7 MB
+    - computational: about 1.2 FLOPs(G)。
+
+
+---
+
+## Before We start Training
+
+Based on the models we provide, we believe we can address most application scenarios. However, we recognize that some situations may require better model performance, necessitating the collection of specific datasets for model fine-tuning. We understand that you might have the budget but not the time to customize your on-site environment. Therefore, you can contact us directly for consultation. Depending on the complexity of your project, we can arrange for engineers to develop custom solutions for you.
+
+Here's a specific example:
+
+Suppose you need to extract text from a specific angle and lighting condition, and you find that our provided model does not perform well. In this case, you can contact us and provide some of the data you've collected. We can then tailor the model to fit your dataset directly. This approach can significantly improve the model's performance, but it requires a considerable amount of time and manpower. Therefore, we will provide a reasonable quote based on your needs.
+
+Alternatively, if you are not in a hurry, **you can directly provide us with your dataset**. We will include your dataset in our test datasets in a future version (without a set timeline) to enhance the model's performance in subsequent releases. This option is entirely free for you.
+
+- **Please note: We will never open-source the data you provide unless you specifically request it. Normally, the data is only used for model updates.**
+
+We are delighted if you choose the second option, as it helps us improve our model, benefiting a broader audience.
+
+For instructions on how to submit your dataset, please see: [**Dataset Submitting**](#dataset-submission).
+
+Contact us at: **docsaidlab@gmail.com**
+
 ---
 
 ## Training the Model
@@ -391,6 +385,16 @@ Let's now break down the training process step-by-step.
     The Head is the final stage of the model, specifically designed to make final predictions based on the features extracted and enhanced earlier.
 
     In this model, heatmap regression technique is employed. It is a common method in object detection and pose estimation, capable of accurately predicting object locations. Heatmap regression will generate a heatmap representation of objects, indicating the likelihood of object presence at different locations. By analyzing these heatmaps, the model can accurately predict the position and posture of objects.
+
+- **Loss: Adaptive Wing Loss**
+
+    Loss functions are crucial in model training, as they calculate the difference between a model's predictions and the actual labels.
+
+    In this model, we employ the Adaptive Wing Loss, a specialized loss function designed for facial landmark detection. This innovative approach modifies the loss function used in heatmap regression, making it particularly effective for facial alignment challenges. The key idea is to adjust the loss function shape based on the types of pixels in the actual heatmap, imposing heavier penalties on foreground pixels (those near facial features) and lighter penalties on background pixels.
+
+    Here, we treat the problem of document corner prediction as akin to facial landmark detection, utilizing a loss function specifically designed for this purpose. We believe this method can effectively address the challenges in document corner detection and yield good results in various scenarios.
+
+    **Reference: [Adaptive Wing Loss for Robust Face Alignment via Heatmap Regression](https://arxiv.org/abs/1904.07399)**
 
 ### Point Regression Model
 
@@ -917,7 +921,7 @@ We suggest uploading your data to Google Drive and sharing the link with us via 
 
 ---
 
-## Frequently Asked Questions (FAQs):
+## Frequently Asked Questions (FAQs)
 
 1. **Is the order of the four corners important?**
    - No, it's not important. Our training process automatically sorts these corners.
@@ -945,3 +949,143 @@ We suggest uploading your data to Google Drive and sharing the link with us via 
    - For an image with a resolution of 1920x1080, an object smaller than 32 x 32 pixels is considered a small object. The specific calculation formula is `min(img_w, img_h) / 32`.
 
 For further assistance, please contact us via email at **docsaidlab@gmail.com**
+
+---
+
+## Citation
+
+If you find this project useful in your research, please consider to cite the following related papers:
+
+```bibtex
+@inproceedings{quattoni2009recognizing,
+  title={Recognizing indoor scenes},
+  author={Quattoni, Ariadna and Torralba, Antonio},
+  booktitle={2009 IEEE conference on computer vision and pattern recognition},
+  pages={413--420},
+  year={2009},
+  organization={IEEE}
+}
+
+@inproceedings{park2019cord,
+  title={CORD: a consolidated receipt dataset for post-OCR parsing},
+  author={Park, Seunghyun and Shin, Seung and Lee, Bado and Lee, Junyeop and Surh, Jaeheung and Seo, Minjoon and Lee, Hwalsuk},
+  booktitle={Workshop on Document Intelligence at NeurIPS 2019},
+  year={2019}
+}
+
+@article{arlazarov2019midv,
+  title={MIDV-500: a dataset for identity document analysis and recognition on mobile devices in video stream},
+  author={Arlazarov, Vladimir Viktorovich and Bulatov, Konstantin Bulatovich and Chernov, Timofey Sergeevich and Arlazarov, Vladimir Lvovich},
+  journal={Компьютерная оптика},
+  volume={43},
+  number={5},
+  pages={818--824},
+  year={2019},
+  publisher={Федеральное государственное автономное образовательное учреждение высшего~…}
+}
+
+@inproceedings{bulatov2020midv,
+  title={MIDV-2019: challenges of the modern mobile-based document OCR},
+  author={Bulatov, Konstantin and Matalov, Daniil and Arlazarov, Vladimir V},
+  booktitle={Twelfth International Conference on Machine Vision (ICMV 2019)},
+  volume={11433},
+  pages={717--722},
+  year={2020},
+  organization={SPIE}
+}
+
+@article{bulatovich2022midv,
+  title={MIDV-2020: a comprehensive benchmark dataset for identity document analysis},
+  author={Bulatovich, Bulatov Konstantin and Vladimirovna, Emelianova Ekaterina and Vyacheslavovich, Tropin Daniil and Sergeevna, Skoryukina Natalya and Sergeevna, Chernyshova Yulia and Zuheng, Ming and Jean-Christophe, Burie and Muzzamil, Luqman Muhammad},
+  journal={Компьютерная оптика},
+  volume={46},
+  number={2},
+  pages={252--270},
+  year={2022},
+  publisher={Федеральное государственное автономное образовательное учреждение высшего~…}
+}
+
+@inproceedings{Wang_2019_ICCV,
+author = {Wang, Xinyao and Bo, Liefeng and Fuxin, Li},
+title = {Adaptive Wing Loss for Robust Face Alignment via Heatmap Regression},
+booktitle = {The IEEE International Conference on Computer Vision (ICCV)},
+month = {October},
+year = {2019}
+}
+
+@inproceedings{tan2020efficientdet,
+  title={Efficientdet: Scalable and efficient object detection},
+  author={Tan, Mingxing and Pang, Ruoming and Le, Quoc V},
+  booktitle={Proceedings of the IEEE/CVF conference on computer vision and pattern recognition},
+  pages={10781--10790},
+  year={2020}
+}
+
+@article{cui2021pp,
+  title={PP-LCNet: A lightweight CPU convolutional neural network},
+  author={Cui, Cheng and Gao, Tingquan and Wei, Shengyu and Du, Yuning and Guo, Ruoyu and Dong, Shuilong and Lu, Bin and Zhou, Ying and Lv, Xueying and Liu, Qiwen and others},
+  journal={arXiv preprint arXiv:2109.15099},
+  year={2021}
+}
+
+@inproceedings{burie2015icdar2015,
+  title={ICDAR2015 competition on smartphone document capture and OCR (SmartDoc)},
+  author={Burie, Jean-Christophe and Chazalon, Joseph and Coustaty, Micka{\"e}l and Eskenazi, S{\'e}bastien and Luqman, Muhammad Muzzamil and Mehri, Maroua and Nayef, Nibal and Ogier, Jean-Marc and Prum, Sophea and Rusi{\~n}ol, Mar{\c{c}}al},
+  booktitle={2015 13th International Conference on Document Analysis and Recognition (ICDAR)},
+  pages={1161--1165},
+  year={2015},
+  organization={IEEE}
+}
+
+@inproceedings{javed2017real,
+  title={Real-time document localization in natural images by recursive application of a cnn},
+  author={Javed, Khurram and Shafait, Faisal},
+  booktitle={2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR)},
+  volume={1},
+  pages={105--110},
+  year={2017},
+  organization={IEEE}
+}
+
+@article{zhu2019coarse,
+  title={Coarse-to-fine document localization in natural scene image with regional attention and recursive corner refinement},
+  author={Zhu, Anna and Zhang, Chen and Li, Zhi and Xiong, Shengwu},
+  journal={International Journal on Document Analysis and Recognition (IJDAR)},
+  volume={22},
+  pages={351--360},
+  year={2019},
+  publisher={Springer}
+}
+
+@article{das2020hu,
+  title={HU-PageScan: a fully convolutional neural network for document page crop},
+  author={das Neves, Ricardo Batista and Lima, Estanislau and Bezerra, Byron LD and Zanchettin, Cleber and Toselli, Alejandro H},
+  journal={IET Image Processing},
+  volume={14},
+  number={15},
+  pages={3890--3898},
+  year={2020},
+  publisher={Wiley Online Library}
+}
+
+
+@article{vyacheslavovich2021advanced,
+  title={Advanced Hough-based method for on-device document localization},
+  author={Vyacheslavovich, Tropin Daniil and Mikhailovich, Ershov Alexandr and Petrovich, Nikolaev Dmitry},
+  journal={Компьютерная оптика},
+  volume={45},
+  number={5},
+  pages={702--712},
+  year={2021},
+  publisher={Федеральное государственное автономное образовательное учреждение высшего~…}
+}
+
+@inproceedings{wu2022ldrnet,
+  title={LDRNet: Enabling Real-time Document Localization on Mobile Devices},
+  author={Wu, Han and Qian, Holland and Wu, Huaming and van Moorsel, Aad},
+  booktitle={Joint European Conference on Machine Learning and Knowledge Discovery in Databases},
+  pages={618--629},
+  year={2022},
+  organization={Springer}
+}
+```
