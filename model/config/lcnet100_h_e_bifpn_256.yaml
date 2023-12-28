@@ -127,7 +127,7 @@ optimizer:
     amsgrad: False
 
 lr_scheduler:
-  name: "MultiStepLRWarmUp"
+  name: MultiStepLRWarmUp
   options:
     warmup_milestone: 1000
     milestones: [1000000, 2000000]

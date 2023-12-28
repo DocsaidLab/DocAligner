@@ -20,10 +20,10 @@ TARG_IDCard_DATA_FOLDER = [
 ]
 
 
-def main(model_type: ModelType = ModelType.heatmap):
+def main(model_type: ModelType, model_cfg: str):
 
     model_type = ModelType.obj_to_enum(model_type)
-    model = DocAligner(model_type=model_type)
+    model = DocAligner(model_type=model_type, model_cfg=model_cfg)
     env_scores = []
     for env_name in TARG_IDCard_DATA_FOLDER:
         gts = D.PowerDict.load_json(DATA_DIR / env_name / f'{env_name}.json')

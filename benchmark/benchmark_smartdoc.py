@@ -8,10 +8,10 @@ from ..model.dataset import SmartDocDataset
 DIR = D.get_curdir(__file__)
 
 
-def main(model_type: ModelType = ModelType.heatmap):
+def main(model_type: ModelType, model_cfg: str):
 
     model_type = ModelType.obj_to_enum(model_type)
-    model = DocAligner(model_type=model_type)
+    model = DocAligner(model_type=model_type, model_cfg=model_cfg)
     dataset = SmartDocDataset(root='/data/Dataset', mode='val', train_ratio=0)
 
     doc_types, mask_ious = [], []
@@ -24,13 +24,12 @@ def main(model_type: ModelType = ModelType.heatmap):
             mask_iou = D.jaccard_index(
                 pred_poly, poly, image_size=(2970, 2100))
 
-            export = D.draw_polygon(img, pred_poly, color=(0, 255, 0))
-            export = D.draw_polygon(export, poly, color=(255, 0, 0))
-
             if not (fp := DIR / 'test_output').is_dir():
                 fp.mkdir(parents=True)
 
             if mask_iou < 0.9:
+                export = D.draw_polygon(img, pred_poly, color=(0, 255, 0))
+                export = D.draw_polygon(export, poly, color=(255, 0, 0))
                 D.imwrite(export, fp / f'{mask_iou:.4f}.jpg')
 
         else:
