@@ -709,3 +709,106 @@ class ViTPointHeatmapEdgeRegHead(nn.Module):
         points = self.point_reg(cls_token)
 
         return points, heatmap, edge
+
+
+class DecoderBlock(nn.Module):
+
+    def __init__(
+        self,
+        in_c,
+        d_model: int,
+        num_layers: int,
+        image_size: List[int],
+        patch_size: int,
+        nhead: int,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+
+        h, w = image_size if isinstance(
+            image_size, (tuple, list)) else (image_size, image_size)
+        nh, nw = h // patch_size, w // patch_size
+
+        # Tokenizer
+        self.tokenizer = nn.Sequential(
+            DT.SeparableConvBlock(in_c, d_model, patch_size, patch_size),
+            nn.Flatten(2),
+            DT.Permute([2, 0, 1]),
+            nn.LayerNorm(d_model)
+        )
+
+        # Positional Embedding
+        self.pos_emb = nn.Parameter(torch.Tensor(nh * nw, 1, d_model))
+        nn.init.kaiming_uniform_(self.pos_emb, a=math.sqrt(5))
+
+        # Decoder
+        self.decoder = nn.TransformerDecoder(
+            decoder_layer=nn.TransformerDecoderLayer(
+                d_model=d_model,
+                dim_feedforward=d_model * 2,
+                norm_first=True,
+                dropout=0,
+                nhead=nhead,
+                **kwargs,
+            ),
+            num_layers=num_layers,
+        )
+        self.out_norm = nn.LayerNorm(d_model)
+
+    def forward(self, query: torch.tensor, feature: torch.tensor):
+        x = self.tokenizer(feature)
+        x = x + self.pos_emb.expand(-1, x.size(1), -1)
+        x = self.decoder(query, x)
+        x = self.out_norm(x)
+        return x
+
+
+class PointRegMultiDecoderHead(nn.Module):
+
+    def __init__(
+        self,
+        in_channels_list: List[int],
+        d_model: int,
+        num_layers: int,
+        num_points: int,
+        image_size: List[int],
+        patch_size: int,
+        nhead: int,
+        **kwargs,
+    ) -> None:
+        super().__init__()
+
+        h, w = image_size if isinstance(
+            image_size, (tuple, list)) else (image_size, image_size)
+
+        # Decoder block
+        self.decoder_block = nn.ModuleList([
+            DecoderBlock(
+                in_c=in_channels_list[i],
+                d_model=d_model,
+                num_layers=num_layers,
+                image_size=(h // (2 ** i), w // (2 ** i)),
+                patch_size=patch_size,
+                nhead=nhead,
+                **kwargs,
+            ) for i in range(5)
+        ])
+
+        # Query
+        self.query = nn.Parameter(torch.zeros(1, 1, d_model))
+        nn.init.kaiming_uniform_(self.query, a=math.sqrt(5))
+
+        # Head
+        self.point_reg = nn.Linear(d_model, num_points)
+        self.has_obj = nn.Sequential(
+            DT.GAP(),
+            nn.Linear(in_channels_list[-1], 1)
+        )
+
+    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+        has_obj = self.has_obj(xs[4])
+        query = self.query.expand(-1, xs[0].size(0), -1)
+        for i in range(5):
+            query = self.decoder_block[4 - i](query, xs[4 - i])
+        points = self.point_reg(query.transpose(0, 1).squeeze(1))
+        return points, has_obj

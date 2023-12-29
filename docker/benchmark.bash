@@ -12,7 +12,7 @@ def main(task, model_type, model_cfg):
         benchmark_idcard.main(model_type, model_cfg)
     elif task == 'passport':
         from DocAligner.benchmark import benchmark_passport
-        benchmark_passport.main()
+        benchmark_passport.main(model_type, model_cfg)
 
     else:
         print("Invalid task. Please specify 'smartdoc' or 'idcard'.")

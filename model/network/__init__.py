@@ -1,2 +1,2 @@
 from .heatmap_model import HeatmapModel
-from .model import DocAlignerModel
+from .point_model import PointModel
