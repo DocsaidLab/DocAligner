@@ -20,7 +20,7 @@ class DocAligner:
         self,
         gpu_id: int = 0,
         backend: D.Backend = D.Backend.cpu,
-        model_type: ModelType = ModelType.point,
+        model_type: ModelType = ModelType.heatmap,
         **kwargs
     ):
         model_type = ModelType.obj_to_enum(model_type)

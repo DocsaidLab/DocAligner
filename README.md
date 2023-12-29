@@ -317,9 +317,9 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - We have endeavored to minimize the size and computational requirements of our model. However, in our experiments, we found that the model's zero-shot capabilities are limited. This means that for new scenes, the model requires fine-tuning to achieve optimal performance.
 
-- Our testing revealed that while the "point regression model" can achieve better evaluation scores, the heatmap model provides more stable results in practical applications. Therefore, we still recommend using the heatmap model.
+- Through our testing, we have found that the 'heatmap regression model' is significantly more stable than the 'point regression model'. Therefore, we still recommend using the heatmap model.
 
-- We cannot disregard the advantages of the "point regression model", which include but are not limited to the ability to predict corners outside the image frame and a fast and straightforward post-processing workflow. Hence, we will continue to optimize the "point regression model" to enhance its performance.
+- However, we cannot disregard the advantages of the 'point regression model', which include, but are not limited to: the ability to predict corner points outside the scope of the image; and a fast and simple post-processing procedure. Hence, we will continue to optimize the 'point regression model' to enhance its performance.
 
 - HeatmapRec-LC100-256:
     - parameters: about 1.2 million

@@ -161,30 +161,17 @@ cython_debug/
 
 .DS_Store
 *.json
-*.yaml
 *.pt
 *.onnx
-*.jpg
 
-
+inner_*
 private_template/
 idcard_benchmark_dataset/
 passport_benchmark_dataset/
 residentcard_benchmark_dataset/
 
-lcnet100_point_reg_bifpn/
+lcnet100_h_e_bifpn_256/
 
-lcnet050_point_reg_bifpn_edge_reg/
+lcnet050_h_e_bifpn_256/
 
-lcnet050_point_box_edge_bifpn_two_encoder_aux/
-
-lcnet050_point_box_edge_bifpn_two_decoder/
-
-lcnet050_point_box_edge_bifpn_two_decoder_aux/
-
-
-lcnet050_point_box_edge_two_decoder_aux/
-
-lcnet050_point_box_edge_bifpn_l1_two_decoder_aux/
-
-lcnet050_point_box_edge_bifpn_two_decoder_aux_heavy_head/
+lcnet050_p_multi_decoder_l3_d64_256/

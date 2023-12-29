@@ -24,7 +24,7 @@ class Identity(nn.Module):
         return self.model(x)
 
 
-class WarpLC100FPN(nn.Module):
+class WarpPointReg(nn.Module):
 
     def __init__(self, model: L.LightningModule):
         super().__init__()
@@ -33,118 +33,8 @@ class WarpLC100FPN(nn.Module):
         self.head = model.head
 
     def forward(self, img: torch.Tensor):
-        return self.head(self.neck(self.backbone(img)))
-
-
-class WarpLC100Heatmap(nn.Module):
-
-    def __init__(self, model: L.LightningModule):
-        super().__init__()
-        self.backbone = model.backbone
-        self.neck = model.neck
-        self.head = model.head.heatmap_rec
-
-    def forward(self, img: torch.Tensor):
-        return self.head(self.neck(self.backbone(img))[0]).squeeze(1)
-
-
-class WarpLC50FPNEncoder(nn.Module):
-
-    def __init__(self, model: L.LightningModule):
-        super().__init__()
-        self.backbone = model.backbone
-        self.neck = model.neck
-        self.head_encoder = model.head.encoder
-        self.head_cls = model.head.cls_token
-        self.head_point_reg = model.head.point_reg
-        self.norm1 = model.head.norm1
-        self.norm2 = model.head.norm2
-
-    def forward(self, img: torch.Tensor):
-        x = self.backbone(img)
-        x = self.neck(x)
-        cls_token, *_ = self.head_cls(x[4])
-        cls_token = self.norm1(cls_token)
-        hid, *_ = self.head_encoder(x[0], cls_token=cls_token.unsqueeze(1))
-        hid = self.norm2(hid)
-        points = self.head_point_reg(hid)
-        return points
-
-
-class WarpLC50FPNDecoder(nn.Module):
-
-    def __init__(self, model: L.LightningModule):
-        super().__init__()
-        self.backbone = model.backbone
-        self.neck = model.neck
-        self.tokenizer_high = model.head.tokenizer_high
-        self.tokenizer_low = model.head.tokenizer_low
-        self.pos_emb_high = model.head.pos_emb_high
-        self.pos_emb_low = model.head.pos_emb_low
-        self.cls_token = model.head.cls_token
-        self.decoder_high = model.head.decoder_high
-        self.decoder_low = model.head.decoder_low
-        self.point_reg = model.head.point_reg
-        self.norm1 = model.head.norm1
-        self.norm2 = model.head.norm2
-
-    def forward(self, img: torch.Tensor):
-        xs = self.backbone(img)
-        xs = self.neck(xs)
-
-        h_lavel_feat = self.tokenizer_high(xs[4])
-        pos_emb_high = self.pos_emb_high.expand(-1, h_lavel_feat.size(1), -1)
-        h_lavel_feat = h_lavel_feat + pos_emb_high
-        query = self.cls_token.expand(-1, h_lavel_feat.size(1), -1)
-        query = self.decoder_high(query, h_lavel_feat)
-        query = self.norm1(query)
-        l_level_feat = self.tokenizer_low(xs[0])
-        pos_emb_low = self.pos_emb_low.expand(-1, l_level_feat.size(1), -1)
-        l_level_feat = l_level_feat + pos_emb_low
-        query = self.decoder_low(query, l_level_feat)
-        query = self.norm2(query)
-        points = self.point_reg(query.transpose(0, 1).squeeze(1))
-
-        return points
-
-
-class WarpHeatmapEdgePointRegDecoder(nn.Module):
-
-    def __init__(self, model: L.LightningModule):
-        super().__init__()
-        self.backbone = model.backbone
-        self.neck = model.neck
-        self.tokenizer_high = model.head.tokenizer_high
-        self.tokenizer_low = model.head.tokenizer_low
-        self.pos_emb_high = model.head.pos_emb_high
-        self.pos_emb_low = model.head.pos_emb_low
-        self.cls_token = model.head.cls_token
-        self.decoder_high = model.head.decoder_high
-        self.decoder_low = model.head.decoder_low
-        self.point_reg = model.head.point_reg
-        self.heatmap_rec = model.head.heatmap_rec
-        self.has_obj = model.head.has_obj
-        self.norm1 = model.head.norm1
-        self.norm2 = model.head.norm2
-
-    def forward(self, img: torch.Tensor):
-        xs = self.backbone(img)
-        xs = self.neck(xs)
-        has_obj = self.has_obj(xs[4])
-        h_lavel_feat = self.tokenizer_high(xs[4])
-        pos_emb_high = self.pos_emb_high.expand(-1, h_lavel_feat.size(1), -1)
-        h_lavel_feat = h_lavel_feat + pos_emb_high
-        query = self.cls_token.expand(-1, h_lavel_feat.size(1), -1)
-        query = self.decoder_high(query, h_lavel_feat)
-        query = self.norm1(query)
-        l_level_feat = self.tokenizer_low(xs[0])
-        pos_emb_low = self.pos_emb_low.expand(-1, l_level_feat.size(1), -1)
-        l_level_feat = l_level_feat + pos_emb_low
-        query = self.decoder_low(query, l_level_feat)
-        query = self.norm2(query)
-        points = self.point_reg(query.transpose(0, 1).squeeze(1))
-        heatmap = self.heatmap_rec(xs[0]).squeeze(1)
-        return points, has_obj.sigmoid(), heatmap
+        points, has_obj = self.head(self.neck(self.backbone(img)))
+        return points, has_obj.sigmoid()
 
 
 class WarpHeatmapReg(nn.Module):

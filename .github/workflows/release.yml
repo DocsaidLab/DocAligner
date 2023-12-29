@@ -64,7 +64,7 @@ jobs:
           prerelease: false
           generateReleaseNotes: true
           discussionCategory: General
-          artifacts: "${{ github.workspace }}/dist/docsaidkit-*-none-any.whl"
+          artifacts: "${{ github.workspace }}/dist/docaligner-*-none-any.whl"
 
       - name: Clean wheel
         run: |

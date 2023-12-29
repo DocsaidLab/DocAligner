@@ -38,14 +38,15 @@ model:
       nhead: 4
 
 onnx:
-  name: WarpHeatmapReg
+  name: WarpPointReg
   input_shape:
     img:
       shape: [1, 3, 256, 256]
       dtype: float32
   input_names: ['img']
   output_names:
-    - heatmap
+    - points
+    - has_obj
   # dynamic_axes:
   #   img:
   #     '0': batch_size
@@ -64,7 +65,6 @@ quantize:
     per_channel: True
     reduce_range: True
     optimize_model: True
-    nodes_to_exclude: ["/Split", "/act/Sigmoid"]
 
 dataset:
   train_options:

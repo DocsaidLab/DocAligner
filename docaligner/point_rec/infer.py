@@ -44,26 +44,36 @@ def preprocess(
     }
 
 
-def postprocess(preds, imgs_size):
-    preds = preds.reshape(4, 2)
-    polygon = preds * np.array(imgs_size[::-1])
+def postprocess(points, has_obj, imgs_size):
+    if has_obj > 0.5:
+        points = points.reshape(4, 2)
+        polygon = points * np.array(imgs_size[::-1])
+    else:
+        polygon = []
     return polygon
 
 
 class Inference:
 
-    default_model_path = \
-        str(DIR / 'ckpt' /
-            'lcnet050_point_box_edge_bifpn_two_decoder_aux_20231215_fp32.onnx')
+    configs = {
+        'lcnet050': {
+            'model_path': 'lcnet050_p_multi_decoder_l3_d64_256_20231229_fp32.onnx',
+            'img_size_infer': (256, 256),
+        },
+    }
 
     def __init__(
         self,
         gpu_id: int = 0,
         backend: D.Backend = D.Backend.cpu,
-        model_path: str = default_model_path
+        model_cfg: str = 'lcnet050',
+        **kwargs
     ):
-        self.img_size_infer = (256, 256)
-        self.model = D.ONNXEngine(model_path, gpu_id=gpu_id, backend=backend)
+        self.root = DIR / 'ckpt'
+        self.cfg = cfg = self.configs[model_cfg]
+        self.img_size_infer = cfg['img_size_infer']
+        model_path = str(self.root / cfg['model_path'])
+        self.model = D.ONNXEngine(model_path, gpu_id, backend, **kwargs)
 
     def __call__(
         self,
@@ -77,7 +87,8 @@ class Inference:
         )
         x = self.model(**img_infos['input'])
         polygon = postprocess(
-            preds=x['output'],
+            points=x['points'],
+            has_obj=x['has_obj'],
             imgs_size=img_infos['img_size_ori'],
         )
 
