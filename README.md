@@ -273,8 +273,9 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| HeatmapRec-LC100-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
-| HeatmapRec-LC050-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
+| HeatmapReg-LC100-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
+| HeatmapReg-LC050-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
+| PointReg-LC050-256 (Ours) |  0.9663 |  0.9606 |  0.9664 |  0.9630 |  0.9199 |  0.9596 |
 | - | - | - | - | - | - | - |
 | HU-PageScan [1] | - | - | - | - | - | 0.9923 |
 | Advanced Hough [2] |  0.9886 |  0.9858 |  0.9896 |  0.9806 |  - |  0.9866 |
@@ -322,16 +323,13 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - However, we cannot disregard the advantages of the 'point regression model', which include, but are not limited to: the ability to predict corner points outside the scope of the image; and a fast and simple post-processing procedure. Hence, we will continue to optimize the 'point regression model' to enhance its performance.
 
-- HeatmapRec-LC100-256:
-    - parameters: about 1.2 million
-    - FP32 model file size: about 4.9 MB
-    - computational: about 1.6 FLOPs(G)。
+- Model overviews:
 
-- HeatmapRec-LC050-256:
-    - parameters: about 0.42 million
-    - FP32 model file size: about 1.7 MB
-    - computational: about 1.2 FLOPs(G)。
-
+    | Model Name             | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
+    |:----------------------:|:--------------:|:--------------:|:--------:|:-------------:|
+    | HeatmapReg-LC100-256   |      1.2       |      4.9       |   1.6    |     0.9892    |
+    | HeatmapReg-LC050-256   |      0.42      |      1.7       |   1.2    |     0.9826    |
+    | PointReg-LC050-256     |      1.1       |      4.5       |   0.22   |     0.9596    |
 
 ---
 

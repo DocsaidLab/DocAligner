@@ -57,7 +57,7 @@ class Inference:
 
     configs = {
         'lcnet050': {
-            'model_path': 'lcnet050_p_multi_decoder_l3_d64_256_20231229_fp32.onnx',
+            'model_path': 'lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx',
             'img_size_infer': (256, 256),
         },
     }
