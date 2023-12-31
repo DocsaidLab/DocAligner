@@ -1,16 +1,16 @@
 common:
-  batch_size: 100
+  batch_size: 128
   image_size: [256, 256]
   is_restore: True
-  restore_ind: "2023-12-26-14-30-55"
-  restore_ckpt: "epoch=19-step=40000.ckpt"
+  restore_ind: "2023-12-30-08-20-58"
+  restore_ckpt: ""
   preview_batch: 1000
 
 global_settings:
   image_size: [256, 256]
 
 trainer:
-  max_epochs: 100
+  max_epochs: 200
   precision: 32
   val_check_interval: 1.0
   gradient_clip_val: 5
@@ -23,14 +23,15 @@ model:
   backbone:
     name: Backbone
     options:
-      name: lcnet_100
+      name: lcnet_050
       pretrained: True
       features_only: True
       replace_components: True
   neck:
-    name: bifpns
+    name: fpns
     out_channels: 64
-    n_bifpn: 3
+    n_fpn: 6
+    use_dwconv: True
   head:
     name: HeatmapEdgeRegHead
     options:
@@ -57,13 +58,6 @@ onnx:
 
 quantize:
   do_quant: False
-  device: mobile
-  options:
-    quant_format: QOperator
-    per_channel: True
-    reduce_range: True
-    optimize_model: True
-    nodes_to_exclude: ["/heatmap_rec/heatmap_rec.1/Sigmoid"]
 
 dataset:
   train_options:
@@ -121,7 +115,7 @@ dataloader:
 optimizer:
   name: AdamW
   options:
-    lr: 1.0e-4
+    lr: 1.0e-6
     betas: [0.9, 0.999]
     weight_decay: 0.01
     amsgrad: False

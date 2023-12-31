@@ -47,10 +47,10 @@ class DefaultImageAug:
     def __init__(self, p=0.5):
         self.coarse_drop_aug = DT.CoarseDropout(
             max_holes=1,
-            min_height=24,
-            max_height=48,
-            min_width=24,
-            max_width=48,
+            min_height=32,
+            max_height=64,
+            min_width=32,
+            max_width=64,
             mask_fill_value=255,
             p=p
         )

@@ -273,9 +273,11 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| HeatmapReg-LC100-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
-| HeatmapReg-LC050-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
-| PointReg-LC050-256 (Ours) |  0.9663 |  0.9606 |  0.9664 |  0.9630 |  0.9199 |  0.9596 |
+| HReg-MBV2_100-BiFPN-256 (Ours) |  - |  - |  - |  - |  - |  - |
+| HReg-LC100-BiFPN-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
+| HReg-LC050-BiFPN-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
+| HReg-LC050-FPN-256 (Ours) |  0.9722 |  0.9744 |  0.9803 |  0.9739 |  0.9553 |  0.9732 |
+| PReg-LC050-XAtt-256 (Ours) |  0.9663 |  0.9606 |  0.9664 |  0.9630 |  0.9199 |  0.9596 |
 | - | - | - | - | - | - | - |
 | HU-PageScan [1] | - | - | - | - | - | 0.9923 |
 | Advanced Hough [2] |  0.9886 |  0.9858 |  0.9896 |  0.9806 |  - |  0.9866 |
@@ -319,7 +321,11 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - We have endeavored to minimize the size and computational requirements of our model. However, in our experiments, we found that the model's zero-shot capabilities are limited. This means that for new scenes, the model requires fine-tuning to achieve optimal performance.
 
-- Through our testing, we have found that the 'heatmap regression model' is significantly more stable than the 'point regression model'. Therefore, we still recommend using the heatmap model.
+- After experiments, we have found that the 'heatmap regression model' is significantly more stable than the 'point regression model'. Therefore, we still recommend using the heatmap model.
+
+- After experiments, `BiFPN` (3 layers) is still better than `FPN` (6 layers), so we recommend that you use `BiFPN`. However, `BiFPN` uses the `einsum` operation, which may cause problems with other inference frameworks. Therefore, if you encounter an error when using `BiFPN`, consider changing to the `FPN` model.
+
+- Although the 'heatmap regression model' is stable, it requires supervision on high-resolution feature maps, resulting in a much higher computational cost than the 'point regression model'.
 
 - However, we cannot disregard the advantages of the 'point regression model', which include, but are not limited to: the ability to predict corner points outside the scope of the image; and a fast and simple post-processing procedure. Hence, we will continue to optimize the 'point regression model' to enhance its performance.
 
@@ -327,9 +333,10 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
     | Model Name             | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
     |:----------------------:|:--------------:|:--------------:|:--------:|:-------------:|
-    | HeatmapReg-LC100-256   |      1.2       |      4.9       |   1.6    |     0.9892    |
-    | HeatmapReg-LC050-256   |      0.42      |      1.7       |   1.2    |     0.9826    |
-    | PointReg-LC050-256     |      1.1       |      4.5       |   0.22   |     0.9596    |
+    | HReg-LC100-BiFPN-256   |      1.2       |      4.9       |   1.6    |     0.9892    |
+    | HReg-LC050-BiFPN-256   |      0.42      |      1.7       |   1.2    |     0.9826    |
+    | HReg-LC050-FPN-256     |      0.42      |      1.7       |   1.6    |     0.9732    |
+    | PReg-LC050-XAtt-256    |      1.1       |      4.5       |   0.22   |     0.9596    |
 
 ---
 

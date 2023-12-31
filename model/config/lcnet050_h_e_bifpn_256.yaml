@@ -32,7 +32,7 @@ model:
     out_channels: 64
     n_bifpn: 3
   head:
-    name: HeatmapEdgeRecHead
+    name: HeatmapEdgeRegHead
     options:
       in_c: 64
 

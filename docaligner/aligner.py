@@ -3,8 +3,8 @@ from enum import Enum
 import docsaidkit as D
 import numpy as np
 
-from .heatmap_rec import Inference as HeatmapRegInference
-from .point_rec import Inference as PointRecInference
+from .heatmap_reg import Inference as HeatmapRegInference
+from .point_reg import Inference as PointRecInference
 
 __all__ = ['DocAligner', 'ModelType']
 

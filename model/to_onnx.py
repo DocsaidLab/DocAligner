@@ -43,12 +43,12 @@ class WarpHeatmapReg(nn.Module):
         super().__init__()
         self.backbone = model.backbone
         self.neck = model.neck
-        self.heatmap_rec = model.head.heatmap_rec
+        self.heatmap_reg = model.head.heatmap_reg
 
     def forward(self, img: torch.Tensor):
         xs = self.backbone(img)
         xs = self.neck(xs)
-        heatmap = self.heatmap_rec(xs[0]).squeeze(1)
+        heatmap = self.heatmap_reg(xs[0]).squeeze(1)
         return heatmap
 
 
