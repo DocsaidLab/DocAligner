@@ -6,7 +6,7 @@
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-dfd.svg"></a>
     <a href="https://github.com/DocsaidLab/DocAligner/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/DocAligner?color=ffa"></a>
     <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
-    <a href="https://doi.org/10.5281/zenodo.10442509"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10442509.svg" alt="DOI"></a>
+    <a href="https://doi.org/10.5281/zenodo.10442508"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10442508.svg" alt="DOI"></a>
 </p>
 
 ## Introduction
@@ -1030,7 +1030,7 @@ If you find our work helpful, please cite the following related papers:
   year = {2023},
   publisher = {GitHub},
   journal = {GitHub repository},
-  doi = {10.5281/zenodo.10442509},
+  doi = {10.5281/zenodo.10442508},
   howpublished = {\url{https://github.com/DocsaidLab/DocAligner}}
 }
 
