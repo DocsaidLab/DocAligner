@@ -80,13 +80,17 @@ class Inference:
             'model_path': 'lcnet100_h_e_bifpn_256_fp32.onnx',
             'img_size_infer': (256, 256),
         },
+        'mobilenetv2_140': {
+            'model_path': 'mobilenetv2_140_h_e_bifpn_256_fp32.onnx',
+            'img_size_infer': (256, 256),
+        },
     }
 
     def __init__(
         self,
         gpu_id: int = 0,
         backend: D.Backend = D.Backend.cpu,
-        model_cfg: str = 'lcnet100',
+        model_cfg: str = 'mobilenetv2_140',
         **kwargs
     ):
         self.root = DIR / 'ckpt'

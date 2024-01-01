@@ -175,3 +175,9 @@ lcnet100_h_e_bifpn_256/
 lcnet050_h_e_bifpn_256/
 
 lcnet050_p_multi_decoder_l3_d64_256/
+
+lcnet100_h_e_fpn_256/
+
+lcnet050_h_e_fpn_256/
+
+mobilenetv2_140_h_e_bifpn_256/
