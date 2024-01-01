@@ -275,7 +275,7 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| HReg-MBV2_100-BiFPN-256 (Ours) |  - |  - |  - |  - |  - |  - |
+| HReg-MBV2_100-BiFPN-256 (Ours) |  0.9917 |  0.9901 |  0.9921 |  0.9899 |  0.9891 |  0.9909 |
 | HReg-LC100-BiFPN-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
 | HReg-LC050-BiFPN-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
 | HReg-LC050-FPN-256 (Ours) |  0.9722 |  0.9744 |  0.9803 |  0.9739 |  0.9553 |  0.9732 |
@@ -331,12 +331,21 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - 以下是模型的比較表格：
 
-    | Model Name             | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
-    |:----------------------:|:--------------:|:--------------:|:--------:|:-------------:|
-    | HReg-LC100-BiFPN-256   |      1.2       |      4.9       |   1.6    |     0.9892    |
-    | HReg-LC050-BiFPN-256   |      0.42      |      1.7       |   1.2    |     0.9826    |
-    | HReg-LC050-FPN-256     |      0.42      |      1.7       |   1.6    |     0.9732    |
-    | PReg-LC050-XAtt-256    |      1.1       |      4.5       |   0.22   |     0.9596    |
+    | Model Name              | ModelType | ModelCfg        |
+    |:-----------------------:|:---------:|:---------------:|
+    | HReg-MBV2-140-BiFPN-256 | heatmap   | mobilenetv2_140 |
+    | HReg-LC100-BiFPN-256    | heatmap   | lcnet100        |
+    | HReg-LC050-BiFPN-256    | heatmap   | lcnet050        |
+    | HReg-LC050-FPN-256      | heatmap   | lcnet050_fpn    |
+    | PReg-LC050-XAtt-256     | point     | lcnet050        |
+
+    | Model Name              | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
+    |:-----------------------:|:--------------:|:--------------:|:--------:|:-------------:|
+    | HReg-MBV2-140-BiFPN-256 |      3.7       |     14.7       |   2.4    |     0.9909    |
+    | HReg-LC100-BiFPN-256    |      1.2       |      4.9       |   1.6    |     0.9892    |
+    | HReg-LC050-BiFPN-256    |      0.42      |      1.7       |   1.2    |     0.9826    |
+    | HReg-LC050-FPN-256      |      0.42      |      1.7       |   1.6    |     0.9732    |
+    | PReg-LC050-XAtt-256     |      1.1       |      4.5       |   0.22   |     0.9596    |
 
 ---
 
