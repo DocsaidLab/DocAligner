@@ -275,10 +275,11 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| HReg-MBV2_100-BiFPN-256 (Ours) |  0.9917 |  0.9901 |  0.9921 |  0.9899 |  0.9891 |  0.9909 |
-| HReg-LC100-BiFPN-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
-| HReg-LC050-BiFPN-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
-| HReg-LC050-FPN-256 (Ours) |  0.9722 |  0.9744 |  0.9803 |  0.9739 |  0.9553 |  0.9732 |
+| HReg-MBV2_100-BiFPNx3-256 (Ours) |  0.9917 |  0.9901 |  0.9921 |  0.9899 |  0.9891 |  0.9909 |
+| HReg-LC100-BiFPNx3-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
+| HReg-LC100-FPNx3-256 (Ours) |  0.9899 |  0.9865 |  0.9912 |  0.9884 |  0.9848 |  0.9886 |
+| HReg-LC050-BiFPNx3-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
+| HReg-LC050-FPNx6-256 (Ours) |  0.9722 |  0.9744 |  0.9803 |  0.9739 |  0.9553 |  0.9732 |
 | PReg-LC050-XAtt-256 (Ours) |  0.9663 |  0.9606 |  0.9664 |  0.9630 |  0.9199 |  0.9596 |
 | - | - | - | - | - | - | - |
 | HU-PageScan [1] | - | - | - | - | - | 0.9923 |
@@ -331,21 +332,23 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - 以下是模型的比較表格：
 
-    | Model Name              | ModelType | ModelCfg        |
-    |:-----------------------:|:---------:|:---------------:|
-    | HReg-MBV2-140-BiFPN-256 | heatmap   | mobilenetv2_140 |
-    | HReg-LC100-BiFPN-256    | heatmap   | lcnet100        |
-    | HReg-LC050-BiFPN-256    | heatmap   | lcnet050        |
-    | HReg-LC050-FPN-256      | heatmap   | lcnet050_fpn    |
-    | PReg-LC050-XAtt-256     | point     | lcnet050        |
+    | Model Name                | ModelType | ModelCfg        |
+    |:-------------------------:|:---------:|:---------------:|
+    | HReg-MBV2-140-BiFPNx3-256 | heatmap   | mobilenetv2_140 |
+    | HReg-LC100-BiFPNx3-256    | heatmap   | lcnet100        |
+    | HReg-LC100-FPNx3-256      | heatmap   | lcnet100_fpn    |
+    | HReg-LC050-BiFPNx3-256    | heatmap   | lcnet050        |
+    | HReg-LC050-FPNx6-256      | heatmap   | lcnet050_fpn    |
+    | PReg-LC050-XAtt-256       | point     | lcnet050        |
 
-    | Model Name              | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
-    |:-----------------------:|:--------------:|:--------------:|:--------:|:-------------:|
-    | HReg-MBV2-140-BiFPN-256 |      3.7       |     14.7       |   2.4    |     0.9909    |
-    | HReg-LC100-BiFPN-256    |      1.2       |      4.9       |   1.6    |     0.9892    |
-    | HReg-LC050-BiFPN-256    |      0.42      |      1.7       |   1.2    |     0.9826    |
-    | HReg-LC050-FPN-256      |      0.42      |      1.7       |   1.6    |     0.9732    |
-    | PReg-LC050-XAtt-256     |      1.1       |      4.5       |   0.22   |     0.9596    |
+    | Model Name                | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
+    |:-------------------------:|:--------------:|:--------------:|:--------:|:-------------:|
+    | HReg-MBV2-140-BiFPNx3-256 |      3.7       |     14.7       |   2.4    |     0.9909    |
+    | HReg-LC100-BiFPNx3-256    |      1.2       |      4.9       |   1.6    |     0.9892    |
+    | HReg-LC100-FPNx3-256      |      1.1       |      4.5       |   1.4    |     0.9886    |
+    | HReg-LC050-BiFPNx3-256    |      0.4       |      1.7       |   1.2    |     0.9826    |
+    | HReg-LC050-FPNx6-256      |      0.4       |      1.7       |   1.6    |     0.9732    |
+    | PReg-LC050-XAtt-256       |      1.1       |      4.5       |   0.22   |     0.9596    |
 
 ---
 
@@ -397,13 +400,13 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
     <img src="./docs/hmap_model_arch.jpg" width="800">
 </div>
 
-- **Backbone: LCNet**
+- **Backbone: MobileNetV2 or LCNet**
 
     Backbone 是模型的主體，負責提取輸入數據中的特徵。
 
-    在這個模型中，使用的是 LCNet，這是一種輕量級的卷積神經網絡，特別適用於在計算資源受限的環境下進行高效的特徵提取。
+    在這個模型中，使用的是 MobileNetV2 或 LCNet，這是一種輕量級的卷積神經網絡，特別適用於在計算資源受限的環境下進行高效的特徵提取。
 
-    我們預期 LCNet 應該能從輸入數據中提取出足夠的特徵信息，為後續的熱圖回歸做好準備。
+    我們預期 MobileNetV2 或 LCNet 應該能從輸入數據中提取出足夠的特徵信息，為後續的熱圖回歸做好準備。
 
 - **Neck: BiFPN**
 

@@ -1,8 +1,8 @@
 common:
   batch_size: 64
   image_size: [256, 256]
-  is_restore: False
-  restore_ind: ""
+  is_restore: True
+  restore_ind: "2024-01-01-03-33-16"
   restore_ckpt: ""
   preview_batch: 1000
 

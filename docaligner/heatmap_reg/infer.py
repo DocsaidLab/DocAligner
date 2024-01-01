@@ -80,6 +80,10 @@ class Inference:
             'model_path': 'lcnet100_h_e_bifpn_256_fp32.onnx',
             'img_size_infer': (256, 256),
         },
+        'lcnet100_fpn': {
+            'model_path': 'lcnet100_h_e_fpn_256_fp32.onnx',
+            'img_size_infer': (256, 256),
+        },
         'mobilenetv2_140': {
             'model_path': 'mobilenetv2_140_h_e_bifpn_256_fp32.onnx',
             'img_size_infer': (256, 256),
