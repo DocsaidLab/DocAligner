@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 
 import docsaidkit as D
 import numpy as np
@@ -44,7 +44,11 @@ def preprocess(
     }
 
 
-def postprocess(preds, imgs_size, heatmap_threshold: float = 0.1):
+def postprocess(
+    preds: np.ndarray,  # (1, 4, H, W)
+    imgs_size: Tuple[int, int],
+    heatmap_threshold: float = 0.3
+) -> List[float]:
 
     def _get_point_with_max_area(mask):
         polygons = D.Polygons.from_image(mask).drop_empty()
@@ -118,9 +122,9 @@ class Inference:
             preds=x['heatmap'],
             imgs_size=img_infos['img_size_ori'],
         )
+        polygon = np.array(polygon)
 
         if len(polygon):
-            polygon = np.array(polygon) + \
-                np.array(img_infos['center_crop_align'])
+            polygon = polygon + np.array(img_infos['center_crop_align'])
 
-        return polygon
+        return polygon.astype(np.float32)

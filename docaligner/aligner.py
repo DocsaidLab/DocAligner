@@ -4,9 +4,11 @@ import docsaidkit as D
 import numpy as np
 
 from .heatmap_reg import Inference as HeatmapRegInference
-from .point_reg import Inference as PointRecInference
+from .point_reg import Inference as PointRegInference
 
-__all__ = ['DocAligner', 'ModelType']
+__all__ = [
+    'DocAligner', 'ModelType', 'HeatmapRegInference', 'PointRegInference',
+]
 
 
 class ModelType(D.EnumCheckMixin, Enum):
@@ -19,13 +21,20 @@ class DocAligner:
     def __init__(
         self,
         model_type: ModelType = ModelType.heatmap,
-        model_cfg: str = 'mobilenetv2_140',
+        model_cfg: str = None,
         backend: D.Backend = D.Backend.cpu,
         gpu_id: int = 0,
         **kwargs
     ):
         model_type = ModelType.obj_to_enum(model_type)
         if model_type == ModelType.heatmap:
+            model_cfg = 'mobilenetv2_140' if model_cfg is None else model_cfg
+            valid_model_cfgs = list(HeatmapRegInference.configs.keys())
+            if model_cfg not in valid_model_cfgs:
+                raise ValueError(
+                    f'Invalid model_cfg: {model_cfg}, '
+                    f'valid model_cfgs: {valid_model_cfgs}'
+                )
             self.detector = HeatmapRegInference(
                 gpu_id=gpu_id,
                 backend=backend,
@@ -33,7 +42,14 @@ class DocAligner:
                 **kwargs
             )
         elif model_type == ModelType.point:
-            self.detector = PointRecInference(
+            model_cfg = 'lcnet050' if model_cfg is None else model_cfg
+            valid_model_cfgs = list(PointRegInference.configs.keys())
+            if model_cfg not in valid_model_cfgs:
+                raise ValueError(
+                    f'Invalid model_cfg: {model_cfg}, '
+                    f'valid model_cfgs: {valid_model_cfgs}'
+                )
+            self.detector = PointRegInference(
                 gpu_id=gpu_id,
                 backend=backend,
                 model_cfg=model_cfg,

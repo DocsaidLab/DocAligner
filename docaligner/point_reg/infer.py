@@ -44,12 +44,16 @@ def preprocess(
     }
 
 
-def postprocess(points, has_obj, imgs_size):
+def postprocess(
+    points: np.ndarray,
+    has_obj: bool,
+    imgs_size: Tuple[int, int]
+) -> np.ndarray:
     if has_obj > 0.5:
         points = points.reshape(4, 2)
         polygon = points * np.array(imgs_size[::-1])
     else:
-        polygon = []
+        polygon = np.array([])
     return polygon
 
 
