@@ -28,7 +28,7 @@ jobs:
           python -m pip install pytest wheel pylint pylint-flask
           python setup.py bdist_wheel
           wheel_file=$(echo dist/*.whl)
-          python -m pip install "${wheel_file}[torch]" --force-reinstall
+          python -m pip install ${wheel_file} --force-reinstall
 
       - name: Lint with pylint
         run: |

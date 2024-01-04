@@ -132,11 +132,6 @@ def main_docaligner_torch2onnx(cfg_name: Union[str, Path]):
         'InputInfo': repr({k: v for k, v in cfg.onnx.input_shape.items()})
     })
 
-    # meta_data.update({
-    #     'Name': 'OCR_00',
-    #     'Version': 'V3.0',
-    # })
-
     pprint(meta_data)
 
     D.write_metadata_into_onnx(
