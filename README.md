@@ -1122,6 +1122,13 @@ year = {2019}
   year={2021}
 }
 
+@inproceedings{vasufastvit2023,
+  author = {Pavan Kumar Anasosalu Vasu and James Gabriel and Jeff Zhu and Oncel Tuzel and Anurag Ranjan},
+  title = {FastViT: A Fast Hybrid Vision Transformer using Structural Reparameterization},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  year = {2023}
+}
+
 @inproceedings{burie2015icdar2015,
   title={ICDAR2015 competition on smartphone document capture and OCR (SmartDoc)},
   author={Burie, Jean-Christophe and Chazalon, Joseph and Coustaty, Micka{\"e}l and Eskenazi, S{\'e}bastien and Luqman, Muhammad Muzzamil and Mehri, Maroua and Nayef, Nibal and Ogier, Jean-Marc and Prum, Sophea and Rusi{\~n}ol, Mar{\c{c}}al},
