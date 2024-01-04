@@ -7,6 +7,7 @@ import docsaidkit.torch as DT
 import lightning as L
 import torch
 import torch.nn as nn
+from timm.utils.model import reparameterize_model
 
 from . import dataset as ds
 from . import network as net
@@ -97,6 +98,7 @@ def main_docaligner_torch2onnx(cfg_name: Union[str, Path]):
 
     warp_model_name = cfg.onnx.pop('name')
     warp_model = globals()[warp_model_name](model)
+    warp_model = reparameterize_model(warp_model)  # For fastvit
     dummy_input = input_constructor(tuple(cfg.onnx.input_shape.items()))
 
     if dynamic_axes := getattr(cfg.onnx, "dynamic_axes", None):

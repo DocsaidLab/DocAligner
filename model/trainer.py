@@ -46,8 +46,10 @@ def main_docaligner_train(cfg_name: str):
     pprint(meta_data)
     # ------------------------- #
 
+    restore_all_states = getattr(cfg.common, 'restore_all_states', False)
     trainer.fit(
         model,
         train_dataloaders=train_data,
-        val_dataloaders=valid_data
+        val_dataloaders=valid_data,
+        ckpt_path=cfg.common.checkpoint_path if restore_all_states else None,
     )

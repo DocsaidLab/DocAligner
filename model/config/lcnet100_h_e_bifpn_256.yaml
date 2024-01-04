@@ -1,10 +1,11 @@
 common:
-  batch_size: 100
+  batch_size: 64
   image_size: [256, 256]
   is_restore: True
-  restore_ind: "2023-12-26-14-30-55"
-  restore_ckpt: "epoch=19-step=40000.ckpt"
+  restore_ind: "2024-01-02-06-44-22"
+  restore_ckpt: ""
   preview_batch: 1000
+  restore_all_states: False
 
 global_settings:
   image_size: [256, 256]
@@ -48,7 +49,7 @@ onnx:
   # dynamic_axes:
   #   img:
   #     '0': batch_size
-  #   output:
+  #   heatmap:
   #     '0': batch_size
   options:
     opset_version: 16
@@ -57,13 +58,6 @@ onnx:
 
 quantize:
   do_quant: False
-  device: mobile
-  options:
-    quant_format: QOperator
-    per_channel: True
-    reduce_range: True
-    optimize_model: True
-    nodes_to_exclude: ["/heatmap_rec/heatmap_rec.1/Sigmoid"]
 
 dataset:
   train_options:
@@ -127,14 +121,23 @@ optimizer:
     amsgrad: False
 
 lr_scheduler:
-  name: MultiStepLRWarmUp
+  name: PolynomialLRWarmup
   options:
-    warmup_milestone: 1000
-    milestones: [1000000, 2000000]
-    gamma: 0.316227766
+    warmup_iters: -1
+    total_iters: -1
   pl_options:
     monitor: loss
     interval: step
+
+# lr_scheduler:
+#   name: MultiStepLRWarmUp
+#   options:
+#     warmup_milestone: 1000
+#     milestones: [1000000, 2000000]
+#     gamma: 0.316227766
+#   pl_options:
+#     monitor: loss
+#     interval: step
 
 callbacks:
   - name: ModelCheckpoint

@@ -18,7 +18,7 @@ def main(model_type: ModelType, model_cfg: str):
     for i in D.Tqdm(range(len(dataset))):
         img, poly, key = dataset[i]
         pred_poly = model(img).doc_polygon
-        if len(pred_poly) == 4:
+        if pred_poly is not None and len(pred_poly) == 4:
             poly = D.order_points_clockwise(poly)
             pred_poly = D.order_points_clockwise(pred_poly)
             mask_iou = D.jaccard_index(

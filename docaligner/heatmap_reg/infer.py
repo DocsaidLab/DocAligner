@@ -92,13 +92,17 @@ class Inference:
             'model_path': 'mobilenetv2_140_h_e_bifpn_256_fp32.onnx',
             'img_size_infer': (256, 256),
         },
+        'fastvit_t8': {
+            'model_path': 'fastvit_t8_h_e_bifpn_256_fp32.onnx',
+            'img_size_infer': (256, 256),
+        },
     }
 
     def __init__(
         self,
         gpu_id: int = 0,
         backend: D.Backend = D.Backend.cpu,
-        model_cfg: str = 'mobilenetv2_140',
+        model_cfg: str = 'fastvit_t8',
         **kwargs
     ):
         self.root = DIR / 'ckpt'

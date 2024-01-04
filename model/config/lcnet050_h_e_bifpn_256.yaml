@@ -57,13 +57,6 @@ onnx:
 
 quantize:
   do_quant: False
-  device: mobile
-  options:
-    quant_format: QOperator
-    per_channel: True
-    reduce_range: True
-    optimize_model: True
-    nodes_to_exclude: ["/heatmap_rec/heatmap_rec.1/Sigmoid"]
 
 dataset:
   train_options:
@@ -121,20 +114,29 @@ dataloader:
 optimizer:
   name: AdamW
   options:
-    lr: 1.0e-5
+    lr: 1.0e-4
     betas: [0.9, 0.999]
     weight_decay: 0.01
     amsgrad: False
 
 lr_scheduler:
-  name: MultiStepLRWarmUp
+  name: PolynomialLRWarmup
   options:
-    warmup_milestone: 1000
-    milestones: [1000000, 2000000]
-    gamma: 0.316227766
+    warmup_iters: -1
+    total_iters: -1
   pl_options:
     monitor: loss
     interval: step
+
+# lr_scheduler:
+#   name: MultiStepLRWarmUp
+#   options:
+#     warmup_milestone: 1000
+#     milestones: [1000000, 2000000]
+#     gamma: 0.316227766
+#   pl_options:
+#     monitor: loss
+#     interval: step
 
 callbacks:
   - name: ModelCheckpoint

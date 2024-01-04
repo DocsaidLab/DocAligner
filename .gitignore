@@ -181,3 +181,5 @@ lcnet100_h_e_fpn_256/
 lcnet050_h_e_fpn_256/
 
 mobilenetv2_140_h_e_bifpn_256/
+
+fastvit_t8_h_e_bifpn_256/

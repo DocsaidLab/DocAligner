@@ -274,6 +274,7 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | HReg-MBV2_100-BiFPNx3-256 (Ours) |  0.9917 |  0.9901 |  0.9921 |  0.9899 |  0.9891 |  0.9909 |
+| HReg-FastViT_T8-BiFPNx3-256 (Ours) |  0.9920 |  0.9894 |  0.9918 |  0.9896 |  0.9888 |  0.9906 |
 | HReg-LC100-BiFPNx3-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
 | HReg-LC100-FPNx3-256 (Ours) |  0.9899 |  0.9865 |  0.9912 |  0.9884 |  0.9848 |  0.9886 |
 | HReg-LC050-BiFPNx3-256 (Ours) |  0.9847 |  0.9822 |  0.9865 |  0.9811 |  0.9722 |  0.9826 |
@@ -332,23 +333,25 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - Model overviews:
 
-    | Model Name                | ModelType | ModelCfg        |
-    |:-------------------------:|:---------:|:---------------:|
-    | HReg-MBV2-140-BiFPNx3-256 | heatmap   | mobilenetv2_140 |
-    | HReg-LC100-BiFPNx3-256    | heatmap   | lcnet100        |
-    | HReg-LC100-FPNx3-256      | heatmap   | lcnet100_fpn    |
-    | HReg-LC050-BiFPNx3-256    | heatmap   | lcnet050        |
-    | HReg-LC050-FPNx6-256      | heatmap   | lcnet050_fpn    |
-    | PReg-LC050-XAtt-256       | point     | lcnet050        |
+    | Model Name                  | ModelType | ModelCfg        |
+    |:---------------------------:|:---------:|:---------------:|
+    | HReg-MBV2-140-BiFPNx3-256   | heatmap   | mobilenetv2_140 |
+    | HReg-FastViT_T8-BiFPNx3-256 | heatmap   | fastvit_t8      |
+    | HReg-LC100-BiFPNx3-256      | heatmap   | lcnet100        |
+    | HReg-LC100-FPNx3-256        | heatmap   | lcnet100_fpn    |
+    | HReg-LC050-BiFPNx3-256      | heatmap   | lcnet050        |
+    | HReg-LC050-FPNx6-256        | heatmap   | lcnet050_fpn    |
+    | PReg-LC050-XAtt-256         | point     | lcnet050        |
 
-    | Model Name                | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
-    |:-------------------------:|:--------------:|:--------------:|:--------:|:-------------:|
-    | HReg-MBV2-140-BiFPNx3-256 |      3.7       |     14.7       |   2.4    |     0.9909    |
-    | HReg-LC100-BiFPNx3-256    |      1.2       |      4.9       |   1.6    |     0.9892    |
-    | HReg-LC100-FPNx3-256      |      1.1       |      4.5       |   1.4    |     0.9886    |
-    | HReg-LC050-BiFPNx3-256    |      0.4       |      1.7       |   1.2    |     0.9826    |
-    | HReg-LC050-FPNx6-256      |      0.4       |      1.7       |   1.6    |     0.9732    |
-    | PReg-LC050-XAtt-256       |      1.1       |      4.5       |   0.22   |     0.9596    |
+    | Model Name                  | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
+    |:---------------------------:|:--------------:|:--------------:|:--------:|:-------------:|
+    | HReg-MBV2-140-BiFPNx3-256   |      3.7       |     14.7       |   2.4    |     0.9909    |
+    | HReg-FastViT_T8-BiFPNx3-256 |      3.3       |     13.1       |   1.7    |     0.9906    |
+    | HReg-LC100-BiFPNx3-256      |      1.2       |      4.9       |   1.6    |     0.9892    |
+    | HReg-LC100-FPNx3-256        |      1.1       |      4.5       |   1.4    |     0.9886    |
+    | HReg-LC050-BiFPNx3-256      |      0.4       |      1.7       |   1.2    |     0.9826    |
+    | HReg-LC050-FPNx6-256        |      0.4       |      1.7       |   1.6    |     0.9732    |
+    | PReg-LC050-XAtt-256         |      1.1       |      4.5       |   0.22   |     0.9596    |
 
 ---
 
@@ -398,11 +401,13 @@ Let's now break down the training process step-by-step.
     <img src="./docs/hmap_model_arch.jpg" width="800">
 </div>
 
-- **Backbone: MobileNetV2 or LCNet**
+- **Backbone: FastViT, MobileNetV2 or LCNet**
 
     The Backbone serves as the main body of the model, responsible for extracting features from the input data.
 
-    In this model, MobileNetV2 or LCNet is utilized, a lightweight convolutional neural network that is especially effective for efficient feature extraction in environments with limited computational resources. We expect MobileNetV2 or LCNet to extract sufficient feature information from the input data, preparing the groundwork for subsequent heatmap regression.
+    In this model, FastViT, MobileNetV2 or LCNet is utilized, a lightweight convolutional neural network that is especially effective for efficient feature extraction in environments with limited computational resources. We expect the backbone to extract sufficient feature information from the input data, preparing the groundwork for subsequent heatmap regression.
+
+    **Reference: [FastViT: A Fast Hybrid Vision Transformer using Structural Reparameterization](https://arxiv.org/abs/2303.14189)**
 
 - **Neck: BiFPN**
 
