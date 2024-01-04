@@ -1,3 +1,4 @@
+import os
 from typing import List, Tuple
 
 import docsaidkit as D
@@ -74,26 +75,32 @@ class Inference:
     configs = {
         'lcnet050': {
             'model_path': 'lcnet050_h_e_bifpn_256_fp32.onnx',
+            'file_id': '1f6TKeIrxI6U8UwoI7UGkcfGxKBtKsxNN',
             'img_size_infer': (256, 256),
         },
         'lcnet050_fpn': {
             'model_path': 'lcnet050_h_e_fpn_256_fp32.onnx',
+            'file_id': '1UT1f_y-b2uHwBXVzltWZ6Lbu8G6tvQx8',
             'img_size_infer': (256, 256),
         },
         'lcnet100': {
             'model_path': 'lcnet100_h_e_bifpn_256_fp32.onnx',
+            'file_id': '1YMXHFcJ2L9CyeJUyKEzdzsUjNU5-tCBC',
             'img_size_infer': (256, 256),
         },
         'lcnet100_fpn': {
             'model_path': 'lcnet100_h_e_fpn_256_fp32.onnx',
+            'file_id': '1uxfGCKVdDbsZJodmEyutw2Gc1rEcXwcC',
             'img_size_infer': (256, 256),
         },
         'mobilenetv2_140': {
             'model_path': 'mobilenetv2_140_h_e_bifpn_256_fp32.onnx',
+            'file_id': '1UOEo104JfizmOkGUvPwp1S2_Ws7GE-l6',
             'img_size_infer': (256, 256),
         },
         'fastvit_t8': {
             'model_path': 'fastvit_t8_h_e_bifpn_256_fp32.onnx',
+            'file_id': '1gRMrCMn5tM0qeC8gXd3mXG5d6XJQLE8b',
             'img_size_infer': (256, 256),
         },
     }
@@ -109,6 +116,9 @@ class Inference:
         self.cfg = cfg = self.configs[model_cfg]
         self.img_size_infer = cfg['img_size_infer']
         model_path = str(self.root / cfg['model_path'])
+        if not D.Path(model_path).exists():
+            file_id = cfg['file_id']
+            os.system(D.gen_download_cmd(file_id, model_path))
         self.model = D.ONNXEngine(model_path, gpu_id, backend, **kwargs)
 
     def __call__(

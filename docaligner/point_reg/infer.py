@@ -1,3 +1,4 @@
+import os
 from typing import Tuple
 
 import docsaidkit as D
@@ -62,6 +63,7 @@ class Inference:
     configs = {
         'lcnet050': {
             'model_path': 'lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx',
+            'file_id': '1e-TlcuNnanAmbnYmcz0-qnt9O76cUill',
             'img_size_infer': (256, 256),
         },
     }
@@ -77,6 +79,9 @@ class Inference:
         self.cfg = cfg = self.configs[model_cfg]
         self.img_size_infer = cfg['img_size_infer']
         model_path = str(self.root / cfg['model_path'])
+        if not D.Path(model_path).exists():
+            file_id = cfg['file_id']
+            os.system(D.gen_download_cmd(file_id, model_path))
         self.model = D.ONNXEngine(model_path, gpu_id, backend, **kwargs)
 
     def __call__(

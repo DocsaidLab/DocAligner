@@ -325,6 +325,8 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - After experiments, we have found that the 'heatmap regression model' is significantly more stable than the 'point regression model'. Therefore, we still recommend using the heatmap model.
 
+- We default to using `FastViT_T8` as the backbone network for the heatmap model, as it has a good balance of performance and computational efficiency. You can replace it with a larger-scale, more accurate backbone network if you wish.
+
 - After experiments, `BiFPN` (3 layers) is still better than `FPN` (6 layers), so we recommend that you use `BiFPN`. However, `BiFPN` uses the `einsum` operation, which may cause problems with other inference frameworks. Therefore, if you encounter an error when using `BiFPN`, consider changing to the `FPN` model.
 
 - Although the 'heatmap regression model' is stable, it requires supervision on high-resolution feature maps, resulting in a much higher computational cost than the 'point regression model'.
