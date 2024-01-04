@@ -28,7 +28,7 @@ class DocAligner:
     ):
         model_type = ModelType.obj_to_enum(model_type)
         if model_type == ModelType.heatmap:
-            model_cfg = 'mobilenetv2_140' if model_cfg is None else model_cfg
+            model_cfg = 'fastvit_t8' if model_cfg is None else model_cfg
             valid_model_cfgs = list(HeatmapRegInference.configs.keys())
             if model_cfg not in valid_model_cfgs:
                 raise ValueError(
