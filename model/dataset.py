@@ -153,12 +153,13 @@ class BaseDataset:
 
 class MIDV500Dataset(BaseDataset):
 
-    def __init__(self,
-                 mode: str = 'train',
-                 train_ratio: float = 1,
-                 seed: int = 42,
-                 *args, **kwargs
-                 ) -> None:
+    def __init__(
+        self,
+        mode: str = 'train',
+        train_ratio: float = 1,
+        seed: int = 42,
+        *args, **kwargs
+    ) -> None:
         self.mode = mode
         self.seed = seed
         self.train_ratio = train_ratio
@@ -197,12 +198,13 @@ class MIDV500Dataset(BaseDataset):
 
 class MIDV2019Dataset(BaseDataset):
 
-    def __init__(self,
-                 mode: str = 'train',
-                 train_ratio: float = 1,
-                 seed: int = 42,
-                 *args, **kwargs
-                 ) -> None:
+    def __init__(
+        self,
+        mode: str = 'train',
+        train_ratio: float = 1,
+        seed: int = 42,
+        *args, **kwargs
+    ) -> None:
         self.mode = mode
         self.seed = seed
         self.train_ratio = train_ratio
@@ -242,12 +244,13 @@ class MIDV2019Dataset(BaseDataset):
 
 class MIDV2020Dataset(BaseDataset):
 
-    def __init__(self,
-                 mode: str = 'train',
-                 train_ratio: float = 1,
-                 seed: int = 42,
-                 *args, **kwargs
-                 ) -> None:
+    def __init__(
+        self,
+        mode: str = 'train',
+        train_ratio: float = 1,
+        seed: int = 42,
+        *args, **kwargs
+    ) -> None:
         self.mode = mode
         self.seed = seed
         self.train_ratio = train_ratio
@@ -283,12 +286,13 @@ class MIDV2020Dataset(BaseDataset):
 
 class CordDataset(BaseDataset):
 
-    def __init__(self,
-                 mode: str = 'train',
-                 train_ratio: float = 1,
-                 seed: int = 42,
-                 *args, **kwargs
-                 ) -> None:
+    def __init__(
+        self,
+        mode: str = 'train',
+        train_ratio: float = 1,
+        seed: int = 42,
+        *args, **kwargs
+    ) -> None:
         self.mode = mode
         self.seed = seed
         self.train_ratio = train_ratio

@@ -64,15 +64,21 @@ dataset:
     options:
       root: /data/Dataset
       aug_ratio: 1
+      random_nodoc_ratio: 0.1
       random_output: False
       downscale: 2
+      length_of_dataset: 200000
       fuse_dataset:
         - name: MIDV500Dataset
           options:
             root: /data/Dataset
+            mode: train
+            train_ratio: 1
         - name: MIDV2020Dataset
           options:
             root: /data/Dataset
+            mode: train
+            train_ratio: 1
         # - name: SyncDataset
         #   options:
         #     use_midv500: True
