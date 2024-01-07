@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 
 import docsaidkit as D
 import numpy as np
@@ -59,12 +60,22 @@ class DocAligner:
     def list_models(self) -> list:
         return list(self.detector.configs.keys())
 
-    def __call__(self, img: np.ndarray, do_center_crop: bool = False) -> D.Document:
+    def render(self, *args, **kwargs):
+        return self.__call__(*args, **kwargs).gen_doc_info_image()
+
+    def __call__(
+        self,
+        img: np.ndarray,
+        do_center_crop: bool = False,
+        return_document_obj: bool = True
+    ) -> Union[D.Document, np.ndarray]:
         polygon = self.detector(img, do_center_crop)
-        return D.Document(**{
-            'image': img,
-            'doc_polygon': polygon if len(polygon) == 4 else None,
-        })
+        if return_document_obj:
+            return D.Document(**{
+                'image': img,
+                'doc_polygon': polygon if len(polygon) == 4 else None,
+            })
+        return polygon
 
     def __repr__(self) -> str:
         return f'{self.detector.__class__.__name__}({self.detector.model})'
