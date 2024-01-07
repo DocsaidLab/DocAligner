@@ -153,33 +153,60 @@ class BaseDataset:
 
 class MIDV500Dataset(BaseDataset):
 
+    def __init__(self,
+                 mode: str = 'train',
+                 train_ratio: float = 1,
+                 seed: int = 42,
+                 *args, **kwargs
+                 ) -> None:
+        self.mode = mode
+        self.seed = seed
+        self.train_ratio = train_ratio
+        super().__init__(*args, **kwargs)
+
     def _build(self):
 
         if (fp := DIR.parent / 'data' / 'midv_dataset_500_cache.json').exists():
-            return D.load_json(fp)
+            dataset = D.load_json(fp)
+        else:
+            ds = D.load_json(DIR.parent / 'data' / 'midv_dataset.json')
+            dataset = []
+            for data in D.Tqdm(ds.values()):
+                for d in data:
+                    if D.Path(d['img_path']).parent.parent.parent.parent.stem == 'midv500':
+                        img_path = self.root / d['img_path']
+                        gt = D.load_json(self.root / d['gt_path'])['quad']
+                        if check_boundary(img_path, gt):
+                            dataset.append((str(img_path), gt))
 
-        ds = D.load_json(DIR.parent / 'data' / 'midv_dataset.json')
-        dataset = []
-        for data in D.Tqdm(ds.values()):
-            for d in data:
-                if D.Path(d['img_path']).parent.parent.parent.parent.stem == 'midv500':
-                    img_path = self.root / d['img_path']
-                    gt = D.load_json(self.root / d['gt_path'])['quad']
-                    if check_boundary(img_path, gt):
-                        dataset.append((str(img_path), gt))
+            # Make a cache file
+            if not fp.exists():
+                D.dump_json(dataset, fp)
 
-        # Make a cache file
-        if not fp.exists():
-            D.dump_json(dataset, fp)
+        np.random.seed(self.seed)
+        rnd_indices = np.random.permutation(len(dataset))
+        split_idx = int(len(dataset) * self.train_ratio)
+        if self.mode == 'train':
+            rnd_indices = rnd_indices[:split_idx]
+        elif self.mode == 'val':
+            rnd_indices = rnd_indices[split_idx:]
+        dataset = [dataset[i] for i in rnd_indices]
 
         return dataset
 
 
 class MIDV2019Dataset(BaseDataset):
 
-    def __init__(self, return_tensor: bool = False, *args, **kwargs) -> None:
+    def __init__(self,
+                 mode: str = 'train',
+                 train_ratio: float = 1,
+                 seed: int = 42,
+                 *args, **kwargs
+                 ) -> None:
+        self.mode = mode
+        self.seed = seed
+        self.train_ratio = train_ratio
         super().__init__(*args, **kwargs)
-        self.return_tensor = return_tensor
 
     def _build(self):
         ds = D.load_json(DIR.parent / 'data' / 'midv_dataset.json')
@@ -190,6 +217,16 @@ class MIDV2019Dataset(BaseDataset):
                     img_path = self.root / d['img_path']
                     gt = D.load_json(self.root / d['gt_path'])['quad']
                     dataset.append((img_path, gt))
+
+        np.random.seed(self.seed)
+        rnd_indices = np.random.permutation(len(dataset))
+        split_idx = int(len(dataset) * self.train_ratio)
+        if self.mode == 'train':
+            rnd_indices = rnd_indices[:split_idx]
+        elif self.mode == 'val':
+            rnd_indices = rnd_indices[split_idx:]
+        dataset = [dataset[i] for i in rnd_indices]
+
         return dataset
 
     def __getitem__(self, idx):
@@ -205,7 +242,19 @@ class MIDV2019Dataset(BaseDataset):
 
 class MIDV2020Dataset(BaseDataset):
 
+    def __init__(self,
+                 mode: str = 'train',
+                 train_ratio: float = 1,
+                 seed: int = 42,
+                 *args, **kwargs
+                 ) -> None:
+        self.mode = mode
+        self.seed = seed
+        self.train_ratio = train_ratio
+        super().__init__(*args, **kwargs)
+
     def _build(self):
+
         ds = D.load_json(DIR.parent / 'data' / 'midv2020_dataset.json')
         dataset = []
         for data in D.Tqdm(ds):
@@ -219,18 +268,50 @@ class MIDV2020Dataset(BaseDataset):
                     quad = np.array([quad_x, quad_y]).T
                     dataset.append((img_path, quad))
                     break
+
+        np.random.seed(self.seed)
+        rnd_indices = np.random.permutation(len(dataset))
+        split_idx = int(len(dataset) * self.train_ratio)
+        if self.mode == 'train':
+            rnd_indices = rnd_indices[:split_idx]
+        elif self.mode == 'val':
+            rnd_indices = rnd_indices[split_idx:]
+        dataset = [dataset[i] for i in rnd_indices]
+
         return dataset
 
 
 class CordDataset(BaseDataset):
 
+    def __init__(self,
+                 mode: str = 'train',
+                 train_ratio: float = 1,
+                 seed: int = 42,
+                 *args, **kwargs
+                 ) -> None:
+        self.mode = mode
+        self.seed = seed
+        self.train_ratio = train_ratio
+        super().__init__(*args, **kwargs)
+
     def _build(self):
+
         ds = D.load_json(DIR.parent / 'data' / 'cord_v0_train_dataset.json')
         dataset = []
         for data in D.Tqdm(ds):
             img_path = self.root / data['img_path']
             gt = data['quad']
             dataset.append((img_path, gt))
+
+        np.random.seed(self.seed)
+        rnd_indices = np.random.permutation(len(dataset))
+        split_idx = int(len(dataset) * self.train_ratio)
+        if self.mode == 'train':
+            rnd_indices = rnd_indices[:split_idx]
+        elif self.mode == 'val':
+            rnd_indices = rnd_indices[split_idx:]
+        dataset = [dataset[i] for i in rnd_indices]
+
         return dataset
 
 
