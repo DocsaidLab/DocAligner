@@ -79,6 +79,11 @@ dataset:
             root: /data/Dataset
             mode: train
             train_ratio: 1
+        - name: SmartDocDataset
+          options:
+            root: /data/Dataset
+            mode: train
+            train_ratio: 0.01
         # - name: SyncDataset
         #   options:
         #     use_midv500: True
@@ -93,7 +98,7 @@ dataset:
       root: /data/Dataset
       mode: val
       return_tensor: True
-      train_ratio: 0
+      train_ratio: 0.01
 
 dataloader:
   train_options:
