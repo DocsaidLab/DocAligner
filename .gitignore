@@ -172,6 +172,8 @@ passport_benchmark_dataset/
 residentcard_benchmark_dataset/
 thickness_dataset*/
 private_data/
+doc_type_dataset/
+*private*
 
 lcnet100_h_e_bifpn_256/
 

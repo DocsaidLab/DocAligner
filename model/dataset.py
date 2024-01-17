@@ -45,6 +45,7 @@ def check_boundary(img: Union[str, Path, np.ndarray], poly: np.ndarray):
 class DefaultImageAug:
 
     def __init__(self, p=0.5):
+        self.thickness = None
         self.coarse_drop_aug = DT.CoarseDropout(
             max_holes=1,
             min_height=32,
@@ -85,7 +86,27 @@ class DefaultImageAug:
 
         ], p=p, keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
 
+    def _add_thick_line(
+        self,
+        img: np.ndarray,
+        poly: np.ndarray,
+        color: Tuple[int, int, int]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        line = poly.copy().astype('int32')
+        img = cv2.line(img, line[0], line[1], color, thickness=2)
+        return img
+
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
+
+        # Thickness Augmentation
+        if np.random.rand() > 0.5:
+            color = np.random.randint(245, 255, size=3).tolist()
+            image = self._add_thick_line(image, keypoints, color)
+            self.thickness = True
+        else:
+            self.thickness = False
+
+        # Coarse Drop Augmentation
         mask = np.zeros_like(image)
         img, mask = self.coarse_drop_aug(image=image, mask=mask).values()
         background = bg_dataset[np.random.randint(len(bg_dataset))]
@@ -93,8 +114,13 @@ class DefaultImageAug:
         background = D.imresize(background, (image.shape[0], image.shape[1]))
         if mask.sum() > 0:
             img[mask > 0] = background[mask > 0]
+
+        # Normal Augmentation
         img, kps = self.aug(image=img, keypoints=keypoints).values()
+
+        # Re-order the keypoints
         kps = D.order_points_clockwise(np.array(kps))
+
         return img, kps
 
 
@@ -694,18 +720,21 @@ class DocAlignerDataset:
         edge_mask = D.imdilate(edge, ksize=self.edge_width) > 0
         return edge, edge_mask
 
-    def to_tensor(self, img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj):
+    def to_tensor(self, img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj, thickness):
         poly = D.Polygon(poly).normalize(
             w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
         box = D.Box(box).normalize(
             w=img.shape[1], h=img.shape[0]).numpy().astype('float32')
+
         img = np.transpose(img.astype('float32'), (2, 0, 1)) / 255.0
         edge = edge.astype('float32') / 255.0
         edge_mask = edge_mask.astype('float32')
         hmaps = np.transpose(hmaps.astype('float32'), (2, 0, 1)) / 255.0
         hmaps_mask = np.transpose(hmaps_mask.astype('float32'), (2, 0, 1))
         has_obj = np.array([has_obj]).astype('float32')
-        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj
+        thickness = np.array([thickness]).astype('float32')
+
+        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj, thickness
 
     def __getitem__(self, idx) -> Tuple[np.ndarray, np.ndarray]:
 
@@ -713,6 +742,7 @@ class DocAlignerDataset:
             # Generate background image from indoor dataset.
             img, poly = self.background_dataset[idx]
             has_obj = False
+            thickness = False
         else:
             if self.random_output:
                 d_idx = np.random.randint(len(self.dataset))
@@ -722,6 +752,7 @@ class DocAlignerDataset:
                     self.length_of_dataset, idx)
             img, poly = self.dataset[d_idx][f_idx]
             has_obj = True
+            thickness = self.dataset[d_idx].aug_func.thickness
 
         hmaps, hmaps_mask = self._gen_gaussian_point(img, poly.astype('int32'))
         edge, edge_mask = self._gen_edge(img, poly.astype('int32'))
@@ -730,6 +761,6 @@ class DocAlignerDataset:
         box = D.Polygon(poly).to_box(box_mode='XYWH').numpy()
 
         if self.output_tensor:
-            return self.to_tensor(img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj)
+            return self.to_tensor(img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj, thickness)
 
-        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj
+        return img, box, poly, edge, edge_mask, hmaps, hmaps_mask, has_obj, thickness
