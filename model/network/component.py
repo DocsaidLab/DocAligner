@@ -52,6 +52,35 @@ class HeatmapEdgeRegHead(nn.Module):
         return heatmap, edge, has_obj
 
 
+class HeatmapEdgeThicknessRegHead(nn.Module):
+
+    def __init__(self, in_c: int, **kwargs) -> None:
+        super().__init__()
+        self.heatmap_reg = nn.Sequential(
+            nn.Conv2d(in_c, 4, 3, padding=1),
+            nn.Sigmoid()
+        )
+        self.edge_reg = nn.Sequential(
+            nn.Conv2d(in_c, 1, 3, padding=1),
+            nn.Sigmoid()
+        )
+        self.has_obj = nn.Sequential(
+            DT.GAP(),
+            nn.Linear(in_c, 1)
+        )
+        self.thickness = nn.Sequential(
+            DT.GAP(),
+            nn.Linear(in_c, 1)
+        )
+
+    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+        heatmap = self.heatmap_reg(xs[0]).squeeze(1)
+        edge = self.edge_reg(xs[0]).squeeze(1)
+        has_obj = self.has_obj(xs[4])
+        thickness = self.thickness(xs[4])
+        return heatmap, edge, has_obj, thickness
+
+
 class HeatmapEdgeRegUp2Head(nn.Module):
 
     def __init__(self, in_c: int, **kwargs) -> None:

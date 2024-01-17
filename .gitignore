@@ -164,11 +164,14 @@ cython_debug/
 *.pt
 *.onnx
 
+service/
 inner_*
 private_template/
 idcard_benchmark_dataset/
 passport_benchmark_dataset/
 residentcard_benchmark_dataset/
+thickness_dataset*/
+private_data/
 
 lcnet100_h_e_bifpn_256/
 
@@ -183,3 +186,17 @@ lcnet050_h_e_fpn_256/
 mobilenetv2_140_h_e_bifpn_256/
 
 fastvit_t8_h_e_bifpn_256/
+
+paper_mobilenetv2_140_h_e_bifpn_256/
+
+paper_mobilenetv2_140_h_e_bifpn_256_few_shot/
+
+mobileone_s0_h_e_bifpn_256/
+
+lcnet050_h_e_bifpn_256_thickness/
+
+mobileone_s4_h_e_bifpn_256/
+
+mobileone_s1_h_e_bifpn_256/
+
+fastvit_sa24_h_e_bifpn_128/

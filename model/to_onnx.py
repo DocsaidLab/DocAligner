@@ -53,6 +53,23 @@ class WarpHeatmapReg(nn.Module):
         return heatmap
 
 
+class WarpHeatmapThickReg(nn.Module):
+
+    def __init__(self, model: L.LightningModule):
+        super().__init__()
+        self.backbone = model.backbone
+        self.neck = model.neck
+        self.heatmap_reg = model.head.heatmap_reg
+        self.thickness = model.head.thickness
+
+    def forward(self, img: torch.Tensor):
+        xs = self.backbone(img)
+        xs = self.neck(xs)
+        heatmap = self.heatmap_reg(xs[0]).squeeze(1)
+        thickness = self.thickness(xs[0])
+        return heatmap, thickness
+
+
 TORCH_TYPE_LOOKUP = {
     'float16': torch.float16,
     'float32': torch.float32,
