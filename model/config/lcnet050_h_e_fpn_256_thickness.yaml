@@ -28,9 +28,9 @@ model:
       features_only: True
       replace_components: True
   neck:
-    name: bifpns
+    name: fpns
     out_channels: 64
-    n_bifpn: 6
+    n_fpn: 3
   head:
     name: HeatmapEdgeThicknessRegHead
     options:
@@ -46,15 +46,13 @@ onnx:
   output_names:
     - heatmap
     - thickness
-  # dynamic_axes:
-  #   img:
-  #     '0': batch_size
-  #   output:
-  #     '0': batch_size
   options:
     opset_version: 16
     verbose: False
     do_constant_folding: True
+  additional_meta_info:
+    Name: OCR_00
+    Version: V5.0
 
 quantize:
   do_quant: False

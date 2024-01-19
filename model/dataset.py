@@ -99,8 +99,8 @@ class DefaultImageAug:
     def __call__(self, image: np.ndarray, keypoints: np.ndarray) -> Any:
 
         # Thickness Augmentation
-        if np.random.rand() > 0.5:
-            color = np.random.randint(245, 255, size=3).tolist()
+        if np.random.rand() > 0.4:
+            color = np.random.randint(240, 255, size=3).tolist()
             image = self._add_thick_line(image, keypoints, color)
             self.thickness = True
         else:
