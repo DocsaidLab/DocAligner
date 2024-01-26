@@ -96,13 +96,12 @@ class HeatmapModel(DT.BaseMixin, L.LightningModule):
     # For inner using
     # -----------------------------------------------------------
     def training_step(self, batch, batch_idx):
-        imgs, _, _, edges, edges_masks, hmaps, hmaps_masks, _, thickness = batch
-        pred_hmaps, pred_edges, pred_thickness = self.forward(imgs)
+        imgs, _, _, edges, edges_masks, hmaps, hmaps_masks, _ = batch
+        pred_hmaps, pred_edges = self.forward(imgs)
 
-        loss_thickness = self.loss_thickness(pred_thickness, thickness)
         loss_hmaps = self.loss_fn(pred_hmaps, hmaps, hmaps_masks)
         loss_edge = self.loss_fn(pred_edges, edges, edges_masks)
-        loss = loss_edge + loss_hmaps * 100 + loss_thickness
+        loss = loss_edge + loss_hmaps * 100
 
         if batch_idx % self.preview_batch == 0:
             self.preview(batch_idx, imgs, hmaps, pred_hmaps, edges, pred_edges)
@@ -113,7 +112,6 @@ class HeatmapModel(DT.BaseMixin, L.LightningModule):
                 'loss': loss,
                 'l_ed': loss_edge,
                 'l_hm': loss_hmaps,
-                'l_th': loss_thickness,
             },
             prog_bar=True,
             on_step=True,
