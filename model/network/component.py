@@ -94,16 +94,11 @@ class HeatmapEdgeRegUp2Head(nn.Module):
             nn.Conv2d(in_c, 1, 3, padding=1),
             nn.Sigmoid()
         )
-        self.has_obj = nn.Sequential(
-            DT.GAP(),
-            nn.Linear(in_c, 1)
-        )
 
     def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
         heatmap = self.heatmap_reg(xs[0]).squeeze(1)
         edge = self.edge_reg(xs[0]).squeeze(1)
-        has_obj = self.has_obj(xs[-1])
-        return heatmap, edge, has_obj
+        return heatmap, edge
 
 
 class HeatmapEdgePointRegDecoderHead(nn.Module):
