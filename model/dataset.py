@@ -47,9 +47,9 @@ class DefaultImageAug:
     def __init__(self, p=0.5):
         self.coarse_drop_aug = DT.CoarseDropout(
             max_holes=1,
-            min_height=32,
+            min_height=64,
             max_height=64,
-            min_width=32,
+            min_width=64,
             max_width=64,
             mask_fill_value=255,
             p=p
@@ -62,13 +62,23 @@ class DefaultImageAug:
             ),
 
             A.OneOf([
-                A.Spatter(mode='mud'),
-                A.GaussNoise(),
-                A.ISONoise(),
                 A.MotionBlur(),
-                A.Defocus(),
-                A.GaussianBlur(blur_limit=(3, 11), p=0.5),
-            ], p=p),
+                A.MedianBlur(),
+                A.GaussianBlur(),
+                A.ZoomBlur(),
+                A.Defocus(radius=(3, 5)),
+            ]),
+
+            A.OneOf([
+                A.Spatter(mode='mud'),
+                A.ISONoise(),
+                A.GaussNoise(),
+                A.MultiplicativeNoise(
+                    multiplier=[0.5, 1.5],
+                    elementwise=True,
+                    per_channel=True
+                ),
+            ]),
 
             A.OneOf([
                 A.HorizontalFlip(),

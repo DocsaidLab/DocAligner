@@ -103,13 +103,18 @@ class Inference:
             'file_id': '1gRMrCMn5tM0qeC8gXd3mXG5d6XJQLE8b',
             'img_size_infer': (256, 256),
         },
+        'fastvit_sa24': {
+            'model_path': 'fastvit_sa24_h_e_bifpn_256_fp32.onnx',
+            'file_id': '1cnR1mEzcnOyqEefGhVrsI5X5qPucXSR3',
+            'img_size_infer': (256, 256),
+        },
     }
 
     def __init__(
         self,
         gpu_id: int = 0,
         backend: D.Backend = D.Backend.cpu,
-        model_cfg: str = 'fastvit_t8',
+        model_cfg: str = 'fastvit_sa24',
         **kwargs
     ):
         self.root = DIR / 'ckpt'

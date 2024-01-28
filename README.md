@@ -273,6 +273,7 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 | Models | bg01 | bg02 | bg03 | bg04 | bg05 | Overall |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| HReg-FastViT_SA24-BiFPNx3-256 (Ours) |  0.9944 |  0.9932 |  0.9940 |  0.9937 |  0.9929 |  0.9937 |
 | HReg-MBV2_100-BiFPNx3-256 (Ours) |  0.9917 |  0.9901 |  0.9921 |  0.9899 |  0.9891 |  0.9909 |
 | HReg-FastViT_T8-BiFPNx3-256 (Ours) |  0.9920 |  0.9894 |  0.9918 |  0.9896 |  0.9888 |  0.9906 |
 | HReg-LC100-BiFPNx3-256 (Ours) |  0.9908 |  0.9877 |  0.9905 |  0.9894 |  0.9854 |  0.9892 |
@@ -335,25 +336,27 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
 
 - Model overviews:
 
-    | Model Name                  | ModelType | ModelCfg        |
-    |:---------------------------:|:---------:|:---------------:|
-    | HReg-MBV2-140-BiFPNx3-256   | heatmap   | mobilenetv2_140 |
-    | HReg-FastViT_T8-BiFPNx3-256 | heatmap   | fastvit_t8      |
-    | HReg-LC100-BiFPNx3-256      | heatmap   | lcnet100        |
-    | HReg-LC100-FPNx3-256        | heatmap   | lcnet100_fpn    |
-    | HReg-LC050-BiFPNx3-256      | heatmap   | lcnet050        |
-    | HReg-LC050-FPNx6-256        | heatmap   | lcnet050_fpn    |
-    | PReg-LC050-XAtt-256         | point     | lcnet050        |
+    | Model Name                    | ModelType | ModelCfg        |
+    |:-----------------------------:|:---------:|:---------------:|
+    | HReg-FastViT_SA24-BiFPNx3-256 | heatmap   | fastvit_sa24    |
+    | HReg-MBV2-140-BiFPNx3-256     | heatmap   | mobilenetv2_140 |
+    | HReg-FastViT_T8-BiFPNx3-256   | heatmap   | fastvit_t8      |
+    | HReg-LC100-BiFPNx3-256        | heatmap   | lcnet100        |
+    | HReg-LC100-FPNx3-256          | heatmap   | lcnet100_fpn    |
+    | HReg-LC050-BiFPNx3-256        | heatmap   | lcnet050        |
+    | HReg-LC050-FPNx6-256          | heatmap   | lcnet050_fpn    |
+    | PReg-LC050-XAtt-256           | point     | lcnet050        |
 
-    | Model Name                  | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
-    |:---------------------------:|:--------------:|:--------------:|:--------:|:-------------:|
-    | HReg-MBV2-140-BiFPNx3-256   |      3.7       |     14.7       |   2.4    |     0.9909    |
-    | HReg-FastViT_T8-BiFPNx3-256 |      3.3       |     13.1       |   1.7    |     0.9906    |
-    | HReg-LC100-BiFPNx3-256      |      1.2       |      4.9       |   1.6    |     0.9892    |
-    | HReg-LC100-FPNx3-256        |      1.1       |      4.5       |   1.4    |     0.9886    |
-    | HReg-LC050-BiFPNx3-256      |      0.4       |      1.7       |   1.2    |     0.9826    |
-    | HReg-LC050-FPNx6-256        |      0.4       |      1.7       |   1.6    |     0.9732    |
-    | PReg-LC050-XAtt-256         |      1.1       |      4.5       |   0.22   |     0.9596    |
+    | Model Name                    | Parameters (M) | FP32 Size (MB) | FLOPs(G) | Overall Score |
+    |:-----------------------------:|:--------------:|:--------------:|:--------:|:-------------:|
+    | HReg-FastViT_SA24-BiFPNx3-256 |     20.8       |     83.1       |   8.5    |     0.9937    |
+    | HReg-MBV2-140-BiFPNx3-256     |      3.7       |     14.7       |   2.4    |     0.9909    |
+    | HReg-FastViT_T8-BiFPNx3-256   |      3.3       |     13.1       |   1.7    |     0.9906    |
+    | HReg-LC100-BiFPNx3-256        |      1.2       |      4.9       |   1.6    |     0.9892    |
+    | HReg-LC100-FPNx3-256          |      1.1       |      4.5       |   1.4    |     0.9886    |
+    | HReg-LC050-BiFPNx3-256        |      0.4       |      1.7       |   1.2    |     0.9826    |
+    | HReg-LC050-FPNx6-256          |      0.4       |      1.7       |   1.6    |     0.9732    |
+    | PReg-LC050-XAtt-256           |      1.1       |      4.5       |   0.22   |     0.9596    |
 
 ---
 
