@@ -12,8 +12,7 @@ class Backbone(nn.Module):
 
     def __init__(self, name, replace_components: bool = False, **kwargs):
         super().__init__()
-        self.backbone = build_transformer(name=name, **kwargs) \
-            if name in list_transformer() else build_backbone(name=name, **kwargs)
+        self.backbone = build_backbone(name=name, **kwargs)
 
         with torch.no_grad():
             dummy = torch.rand(1, 3, 128, 128)
@@ -98,6 +97,38 @@ class HeatmapEdgeRegUp2Head(nn.Module):
     def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
         heatmap = self.heatmap_reg(xs[0]).squeeze(1)
         edge = self.edge_reg(xs[0]).squeeze(1)
+        return heatmap, edge
+
+
+class HeatmapEdgeRegUp8ViTHead(nn.Module):
+
+    def __init__(self, in_c: int, **kwargs) -> None:
+        super().__init__()
+        self.up8 = nn.Sequential(
+            nn.Conv2d(in_c, in_c // 4, 3, padding=1),
+            nn.Upsample(
+                scale_factor=8,
+                mode='bilinear',
+                align_corners=False
+            ),
+        )
+        self.heatmap_reg = nn.Sequential(
+            nn.Conv2d(in_c // 4, 4, 3, padding=1),
+            nn.Sigmoid()
+        )
+        self.edge_reg = nn.Sequential(
+            nn.Conv2d(in_c // 4, 1, 3, padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+        _, img_token = xs
+        T, B, D = img_token.shape
+        H = W = torch.sqrt(torch.tensor(T).float()).long()
+        img_token = img_token.permute(1, 2, 0).reshape(B, D, H, W)
+        img_token = self.up8(img_token)
+        heatmap = self.heatmap_reg(img_token).squeeze(1)
+        edge = self.edge_reg(img_token).squeeze(1)
         return heatmap, edge
 
 
@@ -661,7 +692,7 @@ class ViT(nn.Module):
         nn.init.kaiming_uniform_(self.pos_emb, a=math.sqrt(5))
 
         self.tokenizer = nn.Sequential(
-            DT.SeparableConvBlock(
+            nn.Conv2d(
                 in_c,
                 d_model,
                 patch_size,
