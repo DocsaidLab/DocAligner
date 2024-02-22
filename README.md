@@ -29,7 +29,6 @@ Our models achieve near state-of-the-art (SoTA) performance and demonstrate real
 - [Table of Contents](#table-of-contents)
 - [Quick Start](#quick-start)
 - [Benchmark](#benchmark)
-- [Before We start Training](#before-we-start-training)
 - [Training the Model](#training-the-model)
 - [Model Architecture Design](#model-architecture-design)
 - [Dataset](#dataset)
@@ -357,26 +356,6 @@ bash DocAligner/docker/benchmark.bash smartdoc heatmap lcnet050
     | HReg-LC050-BiFPNx3-256        |      0.4       |      1.7       |   1.2    |     0.9826    |
     | HReg-LC050-FPNx6-256          |      0.4       |      1.7       |   1.6    |     0.9732    |
     | PReg-LC050-XAtt-256           |      1.1       |      4.5       |   0.22   |     0.9596    |
-
----
-
-## Before We start Training
-
-Based on the models we provide, we believe we can address most application scenarios. However, we recognize that some situations may require better model performance, necessitating the collection of specific datasets for model fine-tuning. We understand that you might have the budget but not the time to customize your on-site environment. Therefore, you can contact us directly for consultation. Depending on the complexity of your project, we can arrange for engineers to develop custom solutions for you.
-
-Here's a specific example:
-
-Suppose you need to extract text from a specific angle and lighting condition, and you find that our provided model does not perform well. In this case, you can contact us and provide some of the data you've collected. We can then tailor the model to fit your dataset directly. This approach can significantly improve the model's performance, but it requires a considerable amount of time and manpower. Therefore, we will provide a reasonable quote based on your needs.
-
-Alternatively, if you are not in a hurry, **you can directly provide us with your dataset**. We will include your dataset in our test datasets in a future version (without a set timeline) to enhance the model's performance in subsequent releases. This option is entirely free for you.
-
-- **Please note: We will never open-source the data you provide unless you specifically request it. Normally, the data is only used for model updates.**
-
-We are delighted if you choose the second option, as it helps us improve our model, benefiting a broader audience.
-
-For instructions on how to submit your dataset, please see: [**Dataset Submitting**](#dataset-submission).
-
-Contact us at: **docsaidlab@gmail.com**
 
 ---
 
