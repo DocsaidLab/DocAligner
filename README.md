@@ -481,7 +481,7 @@ Let's now break down the training process step-by-step.
 
 - **Docpool**
    - [**Dataset**](./data/docpool/)
-   - We collected various text images from the internet for use in dynamic composite image technology as a training dataset.
+   - We collected various documents from the internet for use in dynamic composite image technology as a training dataset.
 
 ## Dataset Preprocessing
 
