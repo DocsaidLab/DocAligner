@@ -14,7 +14,7 @@ def mock_onnx_engine(mocker):
     return mock_engine
 
 
-@pytest.mark.parametrize("model_cfg", ['lcnet050', 'lcnet050_fpn', 'lcnet100', 'lcnet100_fpn', 'mobilenetv2_140'])
+@pytest.mark.parametrize("model_cfg", ['lcnet050', 'lcnet050_fpn', 'lcnet100', 'lcnet100_fpn', 'mobilenetv2_140', 'fastvit_t8', 'fastvit_sa24'])
 def test_inference_initialization(model_cfg):
     inference = Inference(model_cfg=model_cfg)
     assert inference.cfg == Inference.configs[model_cfg]

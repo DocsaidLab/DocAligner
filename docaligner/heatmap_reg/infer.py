@@ -120,10 +120,10 @@ class Inference:
         self.root = DIR / 'ckpt'
         self.cfg = cfg = self.configs[model_cfg]
         self.img_size_infer = cfg['img_size_infer']
-        model_path = str(self.root / cfg['model_path'])
+        model_path = self.root / cfg['model_path']
         if not D.Path(model_path).exists():
             D.download_from_docsaid(
-                cfg['file_id'], model_path.name, model_path)
+                cfg['file_id'], model_path.name, str(model_path))
 
         self.model = D.ONNXEngine(model_path, gpu_id, backend, **kwargs)
 
