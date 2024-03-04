@@ -47,7 +47,7 @@ jobs:
           python -m pip install wheel twine
           python setup.py bdist_wheel
           python -m twine upload -u admin -p ${{ secrets.TWINE_PASSWORD }} \
-            --repository-url http://192.168.0.105:8080 \
+            --repository-url http://192.168.0.105:18080 \
               ${{ github.workspace }}/dist/*.whl
 
       - name: Create Release
