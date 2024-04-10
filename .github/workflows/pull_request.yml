@@ -1,0 +1,57 @@
+name: Pull Request
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: [self-hosted, unicorn]
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install packages
+        run: |
+          python -m pip install pytest wheel pylint pylint-flask
+          python setup.py bdist_wheel
+          wheel_file=$(echo dist/*.whl)
+          python -m pip install ${wheel_file} --force-reinstall
+
+      - name: Lint with pylint
+        run: |
+          python -m pylint ${{ github.workspace }}/docaligner \
+            --rcfile=.github/workflows/.pylintrc \
+            --load-plugins pylint_flask \
+
+      - name: Test with pytest
+        run: |
+          python -m pip install pytest pytest-cov pytest-mock typeguard
+
+          # Test all
+          python -m pytest tests
+
+          # Report all
+          mkdir -p tests/coverage
+          python -m pytest -x \
+            --junitxml=tests/coverage/cov-jumitxml.xml \
+            --cov=docaligner tests | tee tests/coverage/cov.txt
+
+      - name: Pytest coverage comment
+        id: coverageComment
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          pytest-coverage-path: tests/coverage/cov.txt
+          junitxml-path: tests/coverage/cov-jumitxml.xml
