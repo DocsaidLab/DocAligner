@@ -8,25 +8,25 @@
     <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
 </p>
 
-## Introduction
+## 介紹
 
 <div align="center">
     <img src="./docs/title.jpg" width="800">
 </div>
 
-This model is specifically designed to recognize documents in images and flatten them for subsequent text recognition or other processing.
+此模型專門設計來辨識圖像中的文件，並將其攤平，以便進行後續的文字辨識或其他處理。
 
-We chose PyTorch as the training framework and converted the model to ONNX format for inference, enabling deployment on various platforms. Additionally, we use ONNXRuntime for model inference, allowing our model to run efficiently on both CPU and GPU. Our model achieves near state-of-the-art (SoTA) performance and demonstrates real-time inference speeds in practical applications, making it suitable for most use cases.
+我們選擇了 PyTorch 作為訓練框架，並在推論時將模型轉換為 ONNX 格式，以便在不同平台上部署。此外，我們使用 ONNXRuntime 進行模型推論，這使得我們的模型能在 CPU 和 GPU 上高效運行。我們的模型在性能上達到接近最先進（SoTA）水平，並在實際應用中展示了即時（Real-Time）的推論速度，使其能夠滿足大多數應用場景的需求。
 
-## Quick Start
+## 快速開始
 
-For package installation and usage instructions, please refer to the [**DocAligner Documents**](https://docsaid.org/en/docaligner/intro).
+套件安裝和使用的方式，請參閱 [**DocAligner Documents**](https://docsaid.org/docaligner/intro/)。
 
-## Citation
+## 引用
 
-We extend our gratitude to all the pioneers whose work has greatly assisted our research.
+我們感謝所有走在前面的人，他們的工作對我們的研究有莫大的幫助。
 
-If you find our work helpful, please cite the following relevant papers:
+如果您認為我們的工作對您有幫助，請引用以下相關論文：
 
 ```bibtex
 @misc{yuan2023docaligner,
