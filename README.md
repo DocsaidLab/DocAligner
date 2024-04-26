@@ -20,7 +20,7 @@ We chose PyTorch as the training framework and converted the model to ONNX forma
 
 ## Quick Start
 
-For package installation and usage instructions, please refer to the [**DocAligner Documents**](https://docsaid.org/en/docaligner/intro).
+For package installation and usage instructions, please refer to the [**DocAligner Documents**](https://docsaid.org/en/docs/docaligner/intro).
 
 ## Citation
 

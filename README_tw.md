@@ -20,7 +20,7 @@
 
 ## 快速開始
 
-套件安裝和使用的方式，請參閱 [**DocAligner Documents**](https://docsaid.org/docaligner/intro/)。
+套件安裝和使用的方式，請參閱 [**DocAligner Documents**](https://docsaid.org/docs/docaligner/intro/)。
 
 ## 引用
 
