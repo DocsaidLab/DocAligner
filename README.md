@@ -104,7 +104,7 @@ We found that in the field of Document Localization, many researchers addressed 
 
    Early papers on this topic often designed algorithms directly for SmartDoc 2015 rather than creating a general model.
 
-   In recent years, papers split the SmartDoc 2015 dataset into training and testing sets to improve scores for SmartDoc 2015.
+   In recent years, papers split the SmartDoc 2015 dataset into training and testing sets by themselves to improve scores.
 
    So you see many architectures scoring well on benchmarks but lacking generalization in practical applications.
 
@@ -155,9 +155,7 @@ This model retains the original feature extractor but modifies the Neck and Head
 
 ### Solving Amplification Error
 
-The output of the heatmap regression model is a heatmap indicating where the document's corners are
-
-likely to be.
+The output of the heatmap regression model is a heatmap indicating where the document's corners are likely to be.
 
 Next, we **cannot directly use this heatmap** because it is downscaled. The correct procedure should be:
 
