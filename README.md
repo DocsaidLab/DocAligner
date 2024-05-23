@@ -22,7 +22,7 @@ We chose PyTorch as the training framework and converted the model to ONNX forma
 
 Due to the extensive usage instructions and setup explanations for this project, we have only summarized the "Model Design" section here.
 
-For installation and usage instructions, please refer to the [**DocAligner Documents**](https://docsaid.org/docs/docaligner/intro/).
+For installation and usage instructions, please refer to the [**DocAligner Documents**](https://docsaid.org/en/docs/category/docaligner/).
 
 ## Model Design
 
