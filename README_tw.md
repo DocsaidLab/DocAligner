@@ -22,7 +22,7 @@
 
 由於本專案的相關使用方式和設定的說明佔據非常多的篇幅，因此我們謹摘要「模型設計」的部分放在這裡。
 
-套件安裝和使用的方式，請參閱 [**DocAligner Documents**](https://docsaid.org/docs/category/docaligner/)。
+套件安裝和使用的方式，請參閱 [**DocAligner Documents**](https://docsaid.org/docs/docaligner/)。
 
 ## 模型設計
 
