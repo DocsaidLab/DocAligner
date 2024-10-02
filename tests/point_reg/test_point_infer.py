@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from docaligner.point_reg.infer import Inference
 
 
