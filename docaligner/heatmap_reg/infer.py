@@ -1,4 +1,3 @@
-import os
 from typing import List, Tuple
 
 import docsaidkit as D
@@ -73,39 +72,19 @@ def postprocess(
 class Inference:
 
     configs = {
-        'lcnet050': {
-            'model_path': 'lcnet050_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'Dya6eqArkdZcpBr',
-            'img_size_infer': (256, 256),
-        },
-        'lcnet050_fpn': {
-            'model_path': 'lcnet050_h_e_fpn_256_fp32.onnx',
-            'file_id': 'ZfM4K28HpLwtyG3',
-            'img_size_infer': (256, 256),
-        },
         'lcnet100': {
             'model_path': 'lcnet100_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'SeNDJkEYJ7soqG9',
-            'img_size_infer': (256, 256),
-        },
-        'lcnet100_fpn': {
-            'model_path': 'lcnet100_h_e_fpn_256_fp32.onnx',
-            'file_id': '22PWoZypzt9fnFC',
-            'img_size_infer': (256, 256),
-        },
-        'mobilenetv2_140': {
-            'model_path': 'mobilenetv2_140_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'JcQJxAJQxmHkXrC',
+            'file_id': 'EXygK5Qn9dyA5Ck',
             'img_size_infer': (256, 256),
         },
         'fastvit_t8': {
             'model_path': 'fastvit_t8_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'ET7dS8eNQZ6HzoS',
+            'file_id': 'YdEZCay4eiadHrY',
             'img_size_infer': (256, 256),
         },
         'fastvit_sa24': {
             'model_path': 'fastvit_sa24_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'odCLJNf38rQL7oW',
+            'file_id': 'w2ZD9CoK38CayrH',
             'img_size_infer': (256, 256),
         },
     }
