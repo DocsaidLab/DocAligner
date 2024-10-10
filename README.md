@@ -16,13 +16,23 @@
 
 This model is specifically designed to recognize documents in images and flatten them for subsequent text recognition or other processing.
 
-We chose PyTorch as the training framework and converted the model to ONNX format for inference to facilitate deployment on various platforms. We use ONNXRuntime for model inference, enabling efficient operation on both CPU and GPU. Our model achieves near-state-of-the-art (SoTA) performance and demonstrates real-time inference speed in practical applications, meeting the needs of most use cases.
+We chose PyTorch as the training framework and converted the model to ONNX format for inference to facilitate deployment on various platforms. We use ONNXRuntime for model inference, enabling efficient operation on both CPU and GPU.
 
 ## Technical Documentation
 
 Due to the extensive usage instructions and setup explanations for this project, we have only summarized the "Model Design" section here.
 
 For installation and usage instructions, please refer to the [**DocAligner Documents**](https://docsaid.org/en/docs/docaligner/).
+
+## Model Testing
+
+We provide a web-based model testing tool for preliminary model evaluation.
+
+- [**DocAligner Web Demo**](https://docsaid.org/en/playground/docaligner-demo/)
+
+If you have custom requirements, please feel free to contact us:
+
+- **docsaidlab@gmail.com**
 
 ## Model Design
 
