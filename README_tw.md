@@ -4,14 +4,15 @@
 
 <p align="left">
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-dfd.svg"></a>
+    <a href=""><img src="https://img.shields.io/badge/python-3.10+-aff.svg"></a>
     <a href="https://github.com/DocsaidLab/DocAligner/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/DocAligner?color=ffa"></a>
-    <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
+    <a href="https://pypi.org/project/docaligner_docsaid/"><img src="https://img.shields.io/pypi/v/docaligner_docsaid.svg"></a>
 </p>
 
 ## 介紹
 
 <div align="center">
-    <img src="./docs/title.jpg" width="800">
+    <img src="https://github.com/DocsaidLab/DocAligner/blob/main/docs/title.jpg?raw=true" width="800">
 </div>
 
 此模型專門設計來辨識圖像中的文件，精確地找到文件的四個角點，讓使用者可以將其攤平，以便進行後續的文字辨識或其他處理。
@@ -20,9 +21,78 @@
 
 ## 技術文件
 
-由於本專案的相關使用方式和設定的說明佔據非常多的篇幅，因此我們謹摘要「模型設計」的部分放在這裡。
+本專案的相關使用方式和設定的說明有一定的篇幅，歡迎你前往：
 
-套件安裝和使用的方式，請參閱 [**DocAligner Documents**](https://docsaid.org/docs/docaligner/)。
+- [**DocAligner 技術文件**](https://docsaid.org/docs/docaligner/) 進行查看。
+
+在那裡可以看到基本的使用與安裝方式、模型設計理念和其他評分標準的說明。
+
+## 安裝
+
+### 透過 PyPI 安裝
+
+1. 安裝 `docaligner_docsaid`：
+
+   ```bash
+   pip install docaligner_docsaid
+   ```
+
+2. 驗證安裝：
+
+   ```bash
+   python -c "import docaligner; print(docaligner.__version__)"
+   ```
+
+3. 如果你看到版本號，則表示安裝成功。
+
+### 從 GitHub 安裝
+
+1. 從 GitHub 下載專案：
+
+   ```bash
+   git clone https://github.com/DocsaidLab/DocAligner.git
+   ```
+
+2. 安裝 wheel 套件：
+
+   ```bash
+   pip install wheel
+   ```
+
+3. 建置 whl 檔案：
+
+   ```bash
+   cd DocAligner
+   python setup.py bdist_wheel
+   ```
+
+4. 安裝 whl 檔案：
+
+   ```bash
+   pip install dist/docaligner_docsaid-*-py3-none-any.whl
+   ```
+
+## 模型推論
+
+以下是一個簡單的範例：
+
+```python
+import cv2
+from skimage import io
+from docaligner import DocAligner
+
+model = DocAligner()
+img = io.imread('https://github.com/DocsaidLab/DocAligner/blob/main/docs/run_test_card.jpg?raw=true')
+img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+result = model(img)
+# print(result)
+#    [[ 48.151894 223.47687 ]
+#    [387.1344   198.09961 ]
+#    [423.0362   345.51334 ]
+#    [ 40.148613 361.38782 ]]
+# 輸出為文件的四個角點坐標
+```
 
 ## 模型測試
 
@@ -40,13 +110,13 @@
 
 ### 點回歸模型
 
-![arch_1.jpg](./docs/point_model_arch.jpg)
+![arch_1.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/point_model_arch.jpg?raw=true)
 
 點回歸模型是我們最早期的版本，它的基本架構分成四個部分：
 
 1. **特徵提取**
 
-   ![pp-lcnet.jpg](./docs/lcnet_arch.jpg)
+   ![pp-lcnet.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/lcnet_arch.jpg?raw=true)
 
    這部分主要是用來將影像轉換成向量，這裡使用了 [**PP-LCNet**](https://arxiv.org/abs/2109.15099) 作為特徵提取器。
 
@@ -124,7 +194,7 @@
 
 ### 熱圖回歸模型
 
-![arch_2.jpg](./docs/hmap_model_arch.jpg)
+![arch_2.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/hmap_model_arch.jpg?raw=true)
 
 這個模型架構沿用了原本的特徵提取器，但是修改了 Neck 和 Head 部分。
 
@@ -140,7 +210,7 @@
 
 3. **Heatmap Regression**
 
-   ![awing_loss.jpg](./docs/awing_loss.jpg)
+   ![awing_loss.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/awing_loss.jpg?raw=true)
 
    為了解決之前提到的放大誤差，我們需要對預測的結果有一定的「模糊性」。意思是：我們不能讓模型準確地指出這個文件的角點在哪裡，而是應該要讓模型說：「**這個文件的角點大概在這個區域**」。
 

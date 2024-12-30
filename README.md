@@ -4,14 +4,15 @@
 
 <p align="left">
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-dfd.svg"></a>
+    <a href=""><img src="https://img.shields.io/badge/python-3.10+-aff.svg"></a>
     <a href="https://github.com/DocsaidLab/DocAligner/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/DocAligner?color=ffa"></a>
-    <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
+    <a href="https://pypi.org/project/docaligner_docsaid/"><img src="https://img.shields.io/pypi/v/docaligner_docsaid.svg"></a>
 </p>
 
 ## Introduction
 
 <div align="center">
-    <img src="./docs/title.jpg" width="800">
+    <img src="https://github.com/DocsaidLab/DocAligner/blob/main/docs/title.jpg?raw=true" width="800">
 </div>
 
 This model is specifically designed to recognize documents in images and flatten them for subsequent text recognition or other processing.
@@ -23,6 +24,73 @@ We chose PyTorch as the training framework and converted the model to ONNX forma
 Due to the extensive usage instructions and setup explanations for this project, we have only summarized the "Model Design" section here.
 
 For installation and usage instructions, please refer to the [**DocAligner Documents**](https://docsaid.org/en/docs/docaligner/).
+
+## Installation
+
+### via PyPI
+
+1. Install the package from PyPI:
+
+   ```bash
+   pip install docaligner-docsaid
+   ```
+
+2. Verify the installation:
+
+   ```bash
+   python -c "import docaligner; print(docaligner.__version__)"
+   ```
+
+3. If the version number is displayed, the installation was successful.
+
+### via Git Clone
+
+1. Clone this repository:
+
+   ```bash
+   git clone https://github.com/DocsaidLab/DocAligner.git
+   ```
+
+2. Install the wheel package:
+
+   ```bash
+   pip install wheel
+   ```
+
+3. Build the wheel file:
+
+   ```bash
+   cd DocAligner
+   python setup.py bdist_wheel
+   ```
+
+4. Install the built wheel file:
+
+   ```bash
+   pip install dist/docaligner_docsaid-*-py3-none-any.whl
+   ```
+
+## Inferencing
+
+We provide a simple inferencing script for model testing.
+
+```python
+import cv2
+from skimage import io
+from docaligner import DocAligner
+
+model = DocAligner()
+img = io.imread('https://github.com/DocsaidLab/DocAligner/blob/main/docs/run_test_card.jpg?raw=true')
+img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+result = model(img)
+# print(result)
+#    [[ 48.151894 223.47687 ]
+#    [387.1344   198.09961 ]
+#    [423.0362   345.51334 ]
+#    [ 40.148613 361.38782 ]]
+# The result is a list of four corner points of the document.
+```
 
 ## Model Testing
 
@@ -40,13 +108,13 @@ We reviewed previous research literature and initially considered a point regres
 
 ### Point Regression Model
 
-![arch_1.jpg](./docs/point_model_arch.jpg)
+![arch_1.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/point_model_arch.jpg?raw=true)
 
 The point regression model is our earliest version, with its basic architecture divided into four parts:
 
 1. **Feature Extraction**
 
-   ![pp-lcnet.jpg](./docs/lcnet_arch.jpg)
+   ![pp-lcnet.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/lcnet_arch.jpg?raw=true)
 
    This part is mainly used to convert images into vectors, using [**PP-LCNet**](https://arxiv.org/abs/2109.15099) as the feature extractor.
 
@@ -124,7 +192,7 @@ We found no unified view among researchers in this field on how to solve this pr
 
 ### Heatmap Regression Model
 
-![arch_2.jpg](./docs/hmap_model_arch.jpg)
+![arch_2.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/hmap_model_arch.jpg?raw=true)
 
 This model retains the original feature extractor but modifies the Neck and Head parts.
 
@@ -140,7 +208,7 @@ This model retains the original feature extractor but modifies the Neck and Head
 
 3. **Heatmap Regression**
 
-   ![awing_loss.jpg](./docs/awing_loss.jpg)
+   ![awing_loss.jpg](https://github.com/DocsaidLab/DocAligner/blob/main/docs/awing_loss.jpg?raw=true)
 
    To address the amplification error mentioned earlier, we need some "fuzziness" in the predicted results. This means the model should not precisely pinpoint the document's corner but indicate that "the corner is roughly in this area."
 
