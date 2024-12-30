@@ -1,4 +1,3 @@
-import docsaidkit as D
 import numpy as np
 import pytest
 from docaligner import (DocAligner, HeatmapRegInference, ModelType,
@@ -67,9 +66,7 @@ def test_doc_aligner_call(mocker, mock_heatmap_reg_inference):
     fake_img = create_fake_image()
     result = doc_aligner(fake_img)
 
-    assert isinstance(result, D.Document)
-    assert result.doc_polygon is None
-    assert result.image is fake_img
+    assert isinstance(result, np.ndarray)
 
 
 def test_doc_aligner_repr(mocker, mock_heatmap_reg_inference):
