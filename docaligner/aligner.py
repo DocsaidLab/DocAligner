@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Union
 
-import docsaidkit as D
+import capybara as cb
 import numpy as np
 
 from .heatmap_reg import Inference as HeatmapRegInference
@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 
-class ModelType(D.EnumCheckMixin, Enum):
+class ModelType(cb.EnumCheckMixin, Enum):
     heatmap = 1
     point = 2
 
@@ -23,7 +23,7 @@ class DocAligner:
         self,
         model_type: ModelType = ModelType.heatmap,
         model_cfg: str = None,
-        backend: D.Backend = D.Backend.cpu,
+        backend: cb.Backend = cb.Backend.cpu,
         gpu_id: int = 0,
         **kwargs
     ):
@@ -67,15 +67,8 @@ class DocAligner:
         self,
         img: np.ndarray,
         do_center_crop: bool = False,
-        return_document_obj: bool = True
-    ) -> Union[D.Document, np.ndarray]:
-        polygon = self.detector(img, do_center_crop)
-        if return_document_obj:
-            return D.Document(**{
-                'image': img,
-                'doc_polygon': polygon if len(polygon) == 4 else None,
-            })
-        return polygon
+    ) -> Union[np.ndarray]:
+        return self.detector(img, do_center_crop)
 
     def __repr__(self) -> str:
         return f'{self.detector.__class__.__name__}({self.detector.model})'

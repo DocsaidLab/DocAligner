@@ -1,9 +1,9 @@
 from typing import Tuple
 
-import docsaidkit as D
+import capybara as cb
 import numpy as np
 
-DIR = D.get_curdir(__file__)
+DIR = cb.get_curdir(__file__)
 
 __all__ = ['Inference']
 
@@ -14,14 +14,14 @@ def preprocess(
     do_center_crop: bool = False,
     return_tensor: bool = True,
 ):
-    if not D.is_numpy_img(img):
+    if not cb.is_numpy_img(img):
         raise ValueError("Input image must be numpy array.")
 
     h, w = img.shape[0:2]
     center_crop_align = [0, 0]
 
     if do_center_crop:
-        img = D.centercrop(img)
+        img = cb.centercrop(img)
         if h > w:
             center_crop_align = [0, (h - w) // 2]
         else:
@@ -29,7 +29,7 @@ def preprocess(
 
     nh, nw = img.shape[0:2]
     if img_size_infer is not None:
-        img = D.imresize(img, size=img_size_infer)
+        img = cb.imresize(img, size=img_size_infer)
 
     if return_tensor:
         img = np.transpose(img, axes=(2, 0, 1)).astype('float32')
@@ -70,7 +70,7 @@ class Inference:
     def __init__(
         self,
         gpu_id: int = 0,
-        backend: D.Backend = D.Backend.cpu,
+        backend: cb.Backend = cb.Backend.cpu,
         model_cfg: str = 'lcnet050',
         **kwargs
     ):
@@ -78,11 +78,11 @@ class Inference:
         self.cfg = cfg = self.configs[model_cfg]
         self.img_size_infer = cfg['img_size_infer']
         model_path = self.root / cfg['model_path']
-        if not D.Path(model_path).exists():
-            D.download_from_docsaid(
+        if not cb.Path(model_path).exists():
+            cb.download_from_docsaid(
                 cfg['file_id'], model_path.name, str(model_path))
 
-        self.model = D.ONNXEngine(model_path, gpu_id, backend, **kwargs)
+        self.model = cb.ONNXEngine(model_path, gpu_id, backend, **kwargs)
 
     def __call__(
         self,
