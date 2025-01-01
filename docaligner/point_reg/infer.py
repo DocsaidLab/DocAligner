@@ -62,7 +62,7 @@ class Inference:
     configs = {
         'lcnet050': {
             'model_path': 'lcnet050_p_multi_decoder_l3_d64_256_fp32.onnx',
-            'file_id': 'HkK9WKKWbH5zEsM',
+            'file_id': '1J7cRuupeEIudYrH_CCSV9WvFfu9JM_qU',
             'img_size_infer': (256, 256),
         },
     }
@@ -79,8 +79,8 @@ class Inference:
         self.img_size_infer = cfg['img_size_infer']
         model_path = self.root / cfg['model_path']
         if not cb.Path(model_path).exists():
-            cb.download_from_docsaid(
-                cfg['file_id'], model_path.name, str(model_path))
+            cb.download_from_google(
+                cfg['file_id'], model_path.name, str(DIR / 'ckpt'))
 
         self.model = cb.ONNXEngine(model_path, gpu_id, backend, **kwargs)
 

@@ -74,17 +74,17 @@ class Inference:
     configs = {
         'lcnet100': {
             'model_path': 'lcnet100_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'EXygK5Qn9dyA5Ck',
+            'file_id': '1IlbLPkCv-TdaBLOPh_4J97P1_KHYYJ7a',
             'img_size_infer': (256, 256),
         },
         'fastvit_t8': {
             'model_path': 'fastvit_t8_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'YdEZCay4eiadHrY',
+            'file_id': '1W88oOkHjMza6xXbDxrG8k_C-Tf2aYKJ4',
             'img_size_infer': (256, 256),
         },
         'fastvit_sa24': {
             'model_path': 'fastvit_sa24_h_e_bifpn_256_fp32.onnx',
-            'file_id': 'w2ZD9CoK38CayrH',
+            'file_id': '14vUH77v6yGg7zFctUgcT6BzV5Iisg4Dl',
             'img_size_infer': (256, 256),
         },
     }
@@ -101,8 +101,8 @@ class Inference:
         self.img_size_infer = cfg['img_size_infer']
         model_path = self.root / cfg['model_path']
         if not cb.Path(model_path).exists():
-            cb.download_from_docsaid(
-                cfg['file_id'], model_path.name, str(model_path))
+            cb.download_from_google(
+                cfg['file_id'], model_path.name, str(DIR / 'ckpt'))
 
         self.model = cb.ONNXEngine(model_path, gpu_id, backend, **kwargs)
 
