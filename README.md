@@ -7,6 +7,7 @@
     <a href=""><img src="https://img.shields.io/badge/python-3.10+-aff.svg"></a>
     <a href="https://github.com/DocsaidLab/DocAligner/releases"><img src="https://img.shields.io/github/v/release/DocsaidLab/DocAligner?color=ffa"></a>
     <a href="https://pypi.org/project/docaligner_docsaid/"><img src="https://img.shields.io/pypi/v/docaligner_docsaid.svg"></a>
+    <a href="https://pypi.org/project/docaligner_docsaid/"><img src="https://img.shields.io/pypi/dm/docaligner_docsaid?color=9cf"></a>
 </p>
 
 ## Introduction
