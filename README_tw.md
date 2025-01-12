@@ -33,10 +33,10 @@
 
 ### 透過 PyPI 安裝
 
-1. 安裝 `docaligner_docsaid`：
+1. 安裝 `docaligner-docsaid`：
 
    ```bash
-   pip install docaligner_docsaid
+   pip install docaligner-docsaid
    ```
 
 2. 驗證安裝：
