@@ -67,8 +67,9 @@ class DocAligner:
         self,
         img: np.ndarray,
         do_center_crop: bool = False,
+        threshold: float = 0.3,
     ) -> Union[np.ndarray]:
-        return self.detector(img, do_center_crop)
+        return self.detector(img, do_center_crop, threshold=threshold)
 
     def __repr__(self) -> str:
         return f'{self.detector.__class__.__name__}({self.detector.model})'
